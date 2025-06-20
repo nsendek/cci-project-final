@@ -15,25 +15,35 @@
   <script>
     const config = {
       poseType: 'BODY',
-      debugMode: false,
-      videoUrl: "/videos/double_jumping.mov",
-    //   videoUrl: '/videos/holding_hand.mov',
-      poseBufferSize: 1
+      videoUrl: '/videos/dan_jumping-jack.mov',
+      //   videoUrl: "/videos/double_jumping.mov",
+      // //   videoUrl: '/videos/holding_hand.mov',
+      debugMode: true,
+      alignAllPosesUp: true,
+      constantPoseSegmentSizes: false,
+      flatShading: true,
+      hideMesh: false,
+      lerpFactor: 0.15,
+      scaleFactor: 0.33,
+      poseBufferSize: 5
     };
   </script>
 </head>
 
 <body>
-    <!-- "/libs/mediapipe/tasks-vision/vision_bundle.mjs",  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js"-->
-     <!-- "/libs/three/build/three.module.js"  "https://unpkg.com/three@0.154.0/build/three.module.js" -->
+  <!-- "/libs/mediapipe/tasks-vision/vision_bundle.mjs",  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js"-->
+  <!-- "/libs/three/build/three.module.js"  "https://unpkg.com/three@0.154.0/build/three.module.js" -->
   <script type="importmap">
     {
       "imports": {
         "mediapipe":  "/libs/mediapipe/tasks-vision/vision_bundle.mjs",
-        "three": "/libs/three/build/three.module.js"
+        "three": "/libs/three/build/three.module.js",
+         "three/addons/": "https://unpkg.com/three@0.154.0/examples/jsm/"
       }
     }
   </script>
+  <main id="main">
+  </main>
   <script src="./main.js" type="module" defer></script>
 </body>
 

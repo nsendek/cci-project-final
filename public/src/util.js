@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-// import * as constants from './constants.js';
+import * as constants from './constants.js';
 
 export class EventBus {
     // Static property to track instances
@@ -105,11 +105,11 @@ export function getQuaternionForAlignmentVector(vector) {
  * @returns {THREE.Vector3}
  */
 export function keypointToVector3(keypoint) {
-  return config.poseType === 'hand'
+  return config.poseType === 'HAND'
   ? new THREE.Vector3(keypoint.x, keypoint.y, keypoint.z).multiplyScalar(-1)
   : new THREE.Vector3(keypoint.x * -1, keypoint.y, keypoint.z * -1)
 }
 
-// export function getPoseLimbs() {
-//   return config.poseType === 'hand' ? constants.HANDPOSE_LIMBS : constants.BODYPOSE_LIMBS;
-// }
+export function getPoseLimbs() {
+  return config.poseType === 'HAND' ? constants.HANDPOSE_LIMBS : constants.BODYPOSE_LIMBS;
+}

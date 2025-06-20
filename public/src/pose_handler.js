@@ -94,8 +94,8 @@ function processResults(results) {
     count++;
   }
   poses = out;
-  // averagePoses = getAveragePoses();
-  EventBus.getInstance().emit('poses', poses);
+  averagePoses = getAveragePoses();
+  EventBus.getInstance().emit('poses', averagePoses);
 }
 
 function createVectorFromObject(point) {

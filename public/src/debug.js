@@ -50,6 +50,9 @@ export const sketch = (p) => {
 
     // 2D landmarks
     poses.forEach((pose, k) => {
+      if (!pose || !pose.landmarks) {
+        return;
+      } 
       for (let i = 0; i < pose.landmarks.length; i++) {
         let point = pose.landmarks[i];
         if (point) {
