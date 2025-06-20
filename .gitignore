@@ -1,0 +1,4 @@
+node_modules/
+videos/
+package-lock.json
+.env

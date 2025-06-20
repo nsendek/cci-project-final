@@ -1,0 +1,19 @@
+{
+  "name": "cci-project-final",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "nodemon app.js"
+  },
+  "dependencies": {
+    "@mediapipe/hands": "^0.4.1646424915",
+    "@mediapipe/tasks-vision": "^0.10.22-rc.20250304",
+    "@tensorflow/tfjs-core": "^3.21.0",
+    "express": "4.18.2",
+    "node-osc": "8.0.6",
+    "nodemon": "2.0.20",
+    "p5": "^2.0.3",
+    "socket.io": "4.5.3",
+    "three": "^0.177.0"
+  }
+}
