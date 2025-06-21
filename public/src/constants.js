@@ -27,6 +27,13 @@ export const BODYPOSE_LIMBS = [
   [0, 24, 26, 28],
 ];
 
+export const BODYPOSE_MODIFIERS = [
+  1,
+  1,
+  0.75,
+  0.75,
+];
+
 /**
  * Refer to 
  * https://docs.ml5js.org/#/reference/handpose?id=handposedetectstart
@@ -50,4 +57,12 @@ export const HANDPOSE_LIMBS = [
   [0, 13, 14, 15, 16],
   [0, 9, 10, 11, 12],
   [0, 17, 18, 19, 20],
+];
+
+export const HANDPOSE_MODIFIERS = [
+  1,
+  1,
+  1,
+  1,
+  1
 ];

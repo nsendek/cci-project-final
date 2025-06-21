@@ -23,7 +23,7 @@ export const sketch = (p) => {
     video.size(640, 480);
     video.hide();
 
-    startDetecting();
+    video.elt.addEventListener("loadeddata", startDetecting);
   }
 
   function useVideoFile() {
@@ -42,7 +42,7 @@ export const sketch = (p) => {
 
     EventBus.getInstance().on('poses', (response) => {
       poses = response;
-    })
+    });
   }
 
   p.draw = () => {
