@@ -9,7 +9,9 @@ app.use('/libs/three', express.static(__dirname + '/node_modules/three'));
 
 app.use(express.static('public'));
 
+// Assets
 app.use('/videos', express.static(__dirname + '/videos'));
+app.use('/models', express.static(__dirname + '/models'));
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);

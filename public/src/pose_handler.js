@@ -102,17 +102,36 @@ function createVectorFromObject(point) {
   return new Vector3(point.x, point.y, point.z);
 }
 
-function convertWorldLandmarksAndAlignment(landmarks) {
-  const rootVector = createVectorFromObject(landmarks[0]);
+function convertWorldLandmarksAndAlignment(worldLandmarks) {
+  // This function preformats the world coords such that
+  // its easier to work with in my scene.
+  // Minor change we make to the world coordinates to the 
+  // hand and body face the 'right' way
+  const formatWorldLandmark = vec => {
+    if (config.poseType === 'BODY') {
+      vec.multiply(new THREE.Vector3(-1, 1, -1));
+    } else {
+      vec.multiplyScalar(-1);
+    }
+  }
+
+  const rootVector = createVectorFromObject(worldLandmarks[0]);
+  formatWorldLandmark(rootVector);
+
   const vectors = [rootVector]
   const alignmentVector = new Vector3(0, 0, 0);
 
-  for (let i = 1; i < landmarks.length; i++) {
-    const landmark = createVectorFromObject(landmarks[i]);
+  for (let i = 1; i < worldLandmarks.length; i++) {
+    const landmark = createVectorFromObject(worldLandmarks[i]);
+    formatWorldLandmark(landmark);
     vectors.push(landmark);
-    alignmentVector.add(
-      new Vector3().subVectors(landmark, rootVector)
-    );
+
+    // We align the body using its legs, since the arms can be above the 'root' head
+    if (config.poseType == 'HAND' || (i >= 23 && i <= 28)) {
+      alignmentVector.add(
+        new Vector3().subVectors(landmark, rootVector)
+      );
+    }
   }
 
   alignmentVector.normalize();
@@ -172,16 +191,16 @@ function getAverageFromPoseBuffer(buffer) {
 }
 
 async function createLandmarker() {
-  // "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
   const vision = await FilesetResolver.forVisionTasks(
-    // "/libs/mediapipe/tasks-vision/wasm"
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+    "/libs/mediapipe/tasks-vision/wasm"
+    // "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
   );
   switch (config.poseType) {
     case 'HAND':
       landmarker = await HandLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+          // modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+          modelAssetPath: `/models/hand_landmarker.task`,
           delegate: "GPU"
         },
         runningMode: 'VIDEO',
@@ -191,7 +210,8 @@ async function createLandmarker() {
     case 'BODY':
       landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task`,
+          // modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task`,
+          modelAssetPath: `/models/pose_landmarker_full.task`,
           delegate: "GPU"
         },
         runningMode: 'VIDEO',
