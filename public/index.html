@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Mediapipe</title>
+  <title>Body Tree</title>
 
   <link rel="stylesheet" type="text/css" href="./style.css">
 
@@ -13,21 +13,47 @@
   <script src="/libs/p5"></script>
 
   <script>
-    const config = {
-      poseType: 'BODY',
-      videoUrl: '/videos/people_walking.mp4',
-      // videoUrl: "/videos/double_jumping.mov",
-      // videoUrl: '/videos/holding_hand.mov',
+    let config = {
+      poseType: 'HAND',
       debugMode: true,
       alignAllPosesUp: true,
       constantPoseSegmentSizes: false,
       flatShading: true,
       hideMesh: false,
-      lerpFactor: 0.15,
-      scaleFactor: 0.33,
-      poseBufferSize: 5,
+      hideAxes: false,
+      lerpFactor: 0.35,
+      branchLengthScale: 0.55,
+      branchWidthScale: 0.25,
+      poseBufferSize: 1,
       maxPoses: 3,
     };
+
+    const handConfig = {
+      // videoUrl: '/videos/holding_hand.mov',
+      startingTrunkSize: 30,
+      scaleFactor: 0.30,
+      branchLengthScale: 0.55,
+    };
+
+    const bodyConfig = {
+      poseBufferSize: 20,
+      startingTrunkSize: 50,
+      scaleFactor: 0.55,
+      branchLengthScale: 0.55,
+      videoUrl: "/videos/dan_3D_test.mov",
+      // videoUrl: "/videos/dan_jumping-jack.mov",
+      // videoUrl: "/videos/double_jumping.mov",
+      // videoUrl: '/videos/people_walking.mp4',
+    };
+
+    // Merge the correct followup configd based on whether
+    // we're tracking hand or body
+    config = {
+      ...config, 
+      ...(config.poseType == 'HAND' ? handConfig : bodyConfig) 
+    };
+
+    let scene; // Also treating global.
   </script>
 </head>
 
