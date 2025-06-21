@@ -185,7 +185,7 @@ async function createLandmarker() {
           delegate: "GPU"
         },
         runningMode: 'VIDEO',
-        numHands: 3
+        numHands: config.maxPoses
       });
       break;
     case 'BODY':
@@ -195,7 +195,7 @@ async function createLandmarker() {
           delegate: "GPU"
         },
         runningMode: 'VIDEO',
-        numPoses: 3,
+        numPoses: config.maxPoses,
         minPoseDetectionConfidence: 0.9,
         minPosePresenceConfidence: 0.9,
         minTrackingConfidence: 0.9

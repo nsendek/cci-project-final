@@ -45,10 +45,8 @@ function init() {
   window.addEventListener('resize', onWindowResize);
 
   setupEnviroment();
-
   setupLights();
   setupTree();
-  
   setupDebug();
 }
 
@@ -61,8 +59,6 @@ function render() {
   if (controls) {
     controls.update();
   }
-
-  // updatePoseTrees();
 
   // let count = 0;
   SmartBone.getInstances().forEach(instance => {
@@ -79,10 +75,6 @@ function render() {
   renderer.render(scene, camera);
 
   lastTime = currentTime;
-}
-
-function updatePoseTrees() {
-  scene.updateMatrixWorld(true);
 }
 
 function setupDebug() {
@@ -153,7 +145,7 @@ function setupTree() {
     // scene.updateMatrixWorld(true);
   }
   // Simple
-  recurseFill(poseTree, 1);
+  recurseFill(poseTree, 2);
 
   // Reasonable max for Hands
   // recurseFill(poseTree, 3);
@@ -199,18 +191,19 @@ function recurseFill(parentTree, level = 1, maxLevel = level) {
   if (level == 0) {
     return; // done
   }
-
   const ends = parentTree.getEnds();
-  // ends.forEach(bone => bone.scale.multiplyScalar());
   ends.forEach(end => {
     const shouldAlignChildren = config.poseType == 'HAND';
-    const pt = new PoseTree(0, shouldAlignChildren);
-
+    const pt = new PoseTree(randomPoseId(), shouldAlignChildren);
     pt.scale = Math.pow(config.scaleFactor, maxLevel - level + 1);
     end.add(pt.getRoot());
 
     recurseFill(pt, level - 1, maxLevel);
   });
+}
+
+function randomPoseId() {
+  return Math.floor(Math.random() * config.maxPoses);
 }
 
 function skinPoseTree(poseTree) {

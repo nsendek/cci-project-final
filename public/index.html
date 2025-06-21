@@ -15,9 +15,9 @@
   <script>
     const config = {
       poseType: 'BODY',
-      videoUrl: '/videos/dan_jumping-jack.mov',
-      //   videoUrl: "/videos/double_jumping.mov",
-      // //   videoUrl: '/videos/holding_hand.mov',
+      videoUrl: '/videos/people_walking.mp4',
+      // videoUrl: "/videos/double_jumping.mov",
+      // videoUrl: '/videos/holding_hand.mov',
       debugMode: true,
       alignAllPosesUp: true,
       constantPoseSegmentSizes: false,
@@ -25,7 +25,8 @@
       hideMesh: false,
       lerpFactor: 0.15,
       scaleFactor: 0.33,
-      poseBufferSize: 5
+      poseBufferSize: 5,
+      maxPoses: 3,
     };
   </script>
 </head>
@@ -38,7 +39,7 @@
       "imports": {
         "mediapipe":  "/libs/mediapipe/tasks-vision/vision_bundle.mjs",
         "three": "/libs/three/build/three.module.js",
-         "three/addons/": "https://unpkg.com/three@0.154.0/examples/jsm/"
+        "three/addons/": "https://unpkg.com/three@0.154.0/examples/jsm/"
       }
     }
   </script>

@@ -7,7 +7,10 @@ export const sketch = (p) => {
   let videoToCanvasScale = 0.75
 
   p.setup = () => {
-    p.createCanvas(640 * videoToCanvasScale, 480 * videoToCanvasScale);
+    const canvas = p.createCanvas(640 * videoToCanvasScale, 480 * videoToCanvasScale);
+    canvas.elt.addEventListener('click', () => {
+      console.log(poses);
+    });
     if (config.videoUrl) {
       useVideoFile();
     } else {
@@ -57,9 +60,8 @@ export const sketch = (p) => {
         let point = pose.landmarks[i];
         if (point) {
           setFill(k);
-          // p.fill(255, 0, 0);
           p.noStroke();
-          p.circle(point.x * p.width, point.y * p.height, 10);
+          p.circle(point.x * p.width, point.y * p.height, 5);
         }
       }
     })
@@ -91,10 +93,6 @@ export const sketch = (p) => {
         break;
       default:
     }
-  }
-
-  p.mouseClicked = () => {
-    console.log(poses);
   }
 
   let paused = false;
