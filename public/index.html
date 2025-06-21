@@ -22,8 +22,6 @@
       hideMesh: false,
       hideAxes: false,
       lerpFactor: 0.35,
-      branchLengthScale: 0.55,
-      branchWidthScale: 0.25,
       poseBufferSize: 1,
       maxPoses: 3,
     };
@@ -33,6 +31,7 @@
       startingTrunkSize: 30,
       scaleFactor: 0.30,
       branchLengthScale: 0.55,
+      branchWidthScale: 0.55,
     };
 
     const bodyConfig = {
@@ -40,6 +39,7 @@
       startingTrunkSize: 50,
       scaleFactor: 0.55,
       branchLengthScale: 0.55,
+      branchWidthScale: 0.35,
       videoUrl: "/videos/dan_3D_test.mov",
       // videoUrl: "/videos/dan_jumping-jack.mov",
       // videoUrl: "/videos/double_jumping.mov",
@@ -49,8 +49,8 @@
     // Merge the correct followup configd based on whether
     // we're tracking hand or body
     config = {
-      ...config, 
-      ...(config.poseType == 'HAND' ? handConfig : bodyConfig) 
+      ...config,
+      ...(config.poseType == 'HAND' ? handConfig : bodyConfig)
     };
 
     let scene; // Also treating global.

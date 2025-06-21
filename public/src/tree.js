@@ -24,6 +24,8 @@ const POSE_TREE_MATERIAL = new THREE.MeshPhongMaterial({
   // shininess: 10
 });
 
+const STARTING_SEGMENT_LENGTH = 1;
+
 /**
  * Class that merges a ThreeJS Bone + Skeleton objects with ML5's pose detector
  * data and gravitates towards them.
@@ -36,6 +38,13 @@ export class PoseTree {
     return PoseTree.instances;
   }
 
+  root = new THREE.Group();
+  limbs = [];
+  targetPose = null;
+
+  branchWidthScale = 1;
+  branchLengthScale = 1;
+
   /**
    * @param {number} [poseId=0] 
    * @param {boolean} [shouldAlign=false] - If true then when setting the new targetPose,
@@ -43,13 +52,7 @@ export class PoseTree {
    */
   constructor(poseId = 0, shouldAlign = false) {
     this.poseId = poseId;
-    this.scale = 1;
-    this.branchWidthScale = 1;
     this.shouldAlign = shouldAlign;
-    this.targetPose = null;
-
-    this.root = new THREE.Group();
-    this.limbs = [];
 
     getPoseLimbs().forEach(limb => {
       // Init limb chain with first bone.
@@ -61,7 +64,7 @@ export class PoseTree {
         const childId = limb[i];
 
         const bone = new SmartBone(this, childId);
-        bone.position.y = 1;
+        bone.position.y = STARTING_SEGMENT_LENGTH;
 
         boneChain[i - 1].add(bone);
         boneChain.push(bone);
@@ -90,6 +93,11 @@ export class PoseTree {
     //     spawnTreeAtBone(bones[2], 0);
     //   })
     // }, 10000);
+  }
+
+  stepDownScales(poseTree) {
+    this.branchWidthScale = poseTree.branchWidthScale * config.branchWidthScale;
+    this.branchLengthScale = poseTree.branchLengthScale * config.branchLengthScale;
   }
 
   getValueScalar() {
@@ -134,7 +142,7 @@ export class PoseTree {
 
         // Rotate bone than translate child to the expected position along +Y
         bone.setTargetQuaternion(rotationQuat);
-        childBone.setTargetPosition(new THREE.Vector3(0, magnitide * getModifiers()[ind] * this.scale, 0));
+        childBone.setTargetPosition(new THREE.Vector3(0, magnitide * getModifiers()[ind] * this.branchLengthScale, 0));
       }
     });
     this.lastAlignedPose = this.targetPose;
@@ -226,7 +234,7 @@ export function spawnTreeAtBone(bone, poseId) {
   console.log('spawnTreeAtBone');
 
   const parentPt = bone.parentTree;
-  pt.scale = parentPt.scale * config.scaleFactor;
+  pt.stepDownScales(parentPt);
   bone.add(pt.getRoot());
 
   skinPoseTree(pt);
@@ -236,7 +244,7 @@ function skinPoseTree(poseTree) {
   const limbs = poseTree.getLimbs();
   limbs.forEach(bones => {
     const skeleton = new THREE.Skeleton(bones);
-    const mesh = getMemoizedSkinnedMesh(poseTree.scale);
+    const mesh = getMemoizedSkinnedMesh(poseTree.branchWidthScale);
     const rootBone = bones[0];
     const rootBoneParent = poseTree.getRoot().parent;
     mesh.add(rootBone);
@@ -259,13 +267,20 @@ export function getMemoizedSkinnedMesh(scale) {
   if (SKINNED_MESH_MEMO[scale]) {
     return SKINNED_MESH_MEMO[scale].clone();
   }
-  const segmentLength = 1;
-  const boneCount = (config.poseType == 'HAND' ? 5 : 4); // I GET TO ASSUME BONE COUNT CAUSE ALL MY LIMBS HAVE THE SAME # BONES.
-  const sizing = config.startingTrunkSize;
+  const segmentLength = STARTING_SEGMENT_LENGTH;
+  // I GET TO ASSUME BONE COUNT CAUSE ALL MY LIMBS HAVE THE SAME # BONES.
+  const boneCount = (config.poseType == 'HAND' ? 5 : 4);
+  const startSize = config.startingTrunkSize;
   const totalLength = segmentLength * (boneCount);
   const heightSegments = 10; // More segments = smoother skinning
 
-  const geometry = new THREE.CylinderGeometry(sizing * scale * config.scaleFactor, sizing * scale, totalLength, 10, heightSegments, true);
+  const geometry = new THREE.CylinderGeometry(
+    startSize * scale * config.branchWidthScale, 
+    startSize * scale, totalLength, 
+    10, 
+    heightSegments, 
+    true
+  );
   // Shift geometry so base is at y=0 (like the root bone)
   geometry.translate(0, totalLength / 2, 0);
 

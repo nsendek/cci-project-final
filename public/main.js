@@ -168,35 +168,35 @@ function recurseFill(parentTree, level = 1, maxLevel = level) {
     return; // done
   }
 
-  // const ends = parentTree.getEnds();
-  // ends.forEach(end => {
-  //   poseCount++;
-  //   const shouldAlignChildren = config.poseType == 'HAND';
-  //   // const pt = new PoseTree(poseCount % config.maxPoses, shouldAlignChildren);
-  //   const pt = new PoseTree(0, shouldAlignChildren);
-
-  //   pt.scale = Math.pow(config.scaleFactor, maxLevel - level + 1);
-  //   end.add(pt.getRoot());
-
-  //   recurseFill(pt, level - 1, maxLevel);
-  // });
-
-  const limbs = parentTree.getLimbs();
-  limbs.forEach(bones => {
+  const ends = parentTree.getEnds();
+  ends.forEach(end => {
     poseCount++;
     const shouldAlignChildren = config.poseType == 'HAND';
+    // const pt = new PoseTree(poseCount % config.maxPoses, shouldAlignChildren);
+    const pt = new PoseTree(0, shouldAlignChildren);
 
-    // random index not including the first.
-    const randIndex = Math.floor(1 + Math.random() * (bones.length - 1));
-    const bone = bones[randIndex];
-    const pt = new PoseTree(poseCount % config.maxPoses, shouldAlignChildren);
-    // const pt = new PoseTree(0, shouldAlignChildren);
-
-    pt.scale = Math.pow(config.scaleFactor, maxLevel - level + 1);
-    bone.add(pt.getRoot());
+    pt.stepDownScales(parentTree);
+    end.add(pt.getRoot());
 
     recurseFill(pt, level - 1, maxLevel);
   });
+
+  // const limbs = parentTree.getLimbs();
+  // limbs.forEach(bones => {
+  //   poseCount++;
+  //   const shouldAlignChildren = config.poseType == 'HAND';
+
+  //   // random index not including the first.
+  //   const randIndex = Math.floor(1 + Math.random() * (bones.length - 1));
+  //   const bone = bones[randIndex];
+  //   const pt = new PoseTree(poseCount % config.maxPoses, shouldAlignChildren);
+  //   // const pt = new PoseTree(0, shouldAlignChildren);
+
+  //   pt.stepDownScales(parentTree);
+  //   bone.add(pt.getRoot());
+
+  //   recurseFill(pt, level - 1, maxLevel);
+  // });
 }
 
 function randomPoseId() {
@@ -207,7 +207,7 @@ function skinPoseTree(poseTree) {
   const limbs = poseTree.getLimbs();
   limbs.forEach(bones => {
     const skeleton = new THREE.Skeleton(bones);
-    const mesh = getMemoizedSkinnedMesh(poseTree.scale);
+    const mesh = getMemoizedSkinnedMesh(poseTree.branchWidthScale);
     const rootBone = bones[0];
     const rootBoneParent = poseTree.getRoot().parent;
     mesh.add(rootBone);
