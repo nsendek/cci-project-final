@@ -3,7 +3,7 @@ import {
   EventBus,
   getQuaternionForAlignmentVector,
   getPoseLimbs,
-  keypointToVector3,
+  getModifiers
 } from "./util.js";
 
 /**
@@ -13,14 +13,15 @@ const SKINNED_MESH_MEMO = {};
 window.SKINNED_MESH_MEMO = SKINNED_MESH_MEMO;
 
 const POSE_TREE_MATERIAL = new THREE.MeshPhongMaterial({
-  color: 0x156289,
-  // emissive: 0xffffff,
-  // emissiveIntensity: 0.05,
+  color: 0xed0786,
+  // color: 0xf4ffa3,
+  emissive: 0x000000,
+  emissiveIntensity: 0.05,
   side: THREE.DoubleSide,
   flatShading: config.flatShading,
-  transparent: true,
-  // opacity: 0.3,
-  shininess: 10
+  // transparent: true,
+  // opacity: 0.5,
+  // shininess: 10
 });
 
 /**
@@ -43,6 +44,7 @@ export class PoseTree {
   constructor(poseId = 0, shouldAlign = false) {
     this.poseId = poseId;
     this.scale = 1;
+    this.branchWidthScale = 1;
     this.shouldAlign = shouldAlign;
     this.targetPose = null;
 
@@ -51,14 +53,14 @@ export class PoseTree {
 
     getPoseLimbs().forEach(limb => {
       // Init limb chain with first bone.
-      const chainRoot = new SmartBone(limb[0]);
+      const chainRoot = new SmartBone(this, limb[0]);
       this.root.add(chainRoot);
       const boneChain = [chainRoot];
 
       for (let i = 1; i < limb.length; i++) {
         const childId = limb[i];
 
-        const bone = new SmartBone(childId);
+        const bone = new SmartBone(this, childId);
         bone.position.y = 1;
 
         boneChain[i - 1].add(bone);
@@ -79,25 +81,28 @@ export class PoseTree {
 
     PoseTree.instances.push(this);
 
-    this.root.visible = false;
+    // setTimeout(() => {
+    //   if (window.POSE_COUNT > 1000) {
+    //     return;
+    //   }
+    //   // spawn another tree at the 3rd bone
+    //   this.limbs.forEach(bones => {
+    //     spawnTreeAtBone(bones[2], 0);
+    //   })
+    // }, 10000);
   }
 
   getValueScalar() {
-    if (config.poseType == 'HAND') {
-      return 2500 * this.scale;
-    }
-
-    return 1000 * this.scale;
+    return (config.poseType == 'HAND') ? 2500 : 1000;
   }
 
   setTarget(targetPose) {
     // if (!this.root.visible) this.root.visible = false;
     this.targetPose = targetPose;
-    this.update();
   }
 
   update() {
-    if (!this.targetPose) {
+    if (!this.targetPose || this.targetPose == this.lastAlignedPose) {
       return;
     }
     this.align();
@@ -105,13 +110,12 @@ export class PoseTree {
 
   align() {
     this.getRoot().updateMatrixWorld(true);
-    this.limbs.forEach(limb => {
+    this.limbs.forEach((limb, ind) => {
       for (let i = 0; i < limb.length - 1; i++) {
         const bone = limb[i];
         const childBone = limb[i + 1];
 
-        bone.updateMatrixWorld(true);
-        childBone.updateMatrixWorld(true);
+        bone.updateMatrixWorld();
 
         const boneWorldPosition = this.getWorldPosition(bone.poseId);
         const childWorldPosition = this.getWorldPosition(childBone.poseId);
@@ -130,9 +134,10 @@ export class PoseTree {
 
         // Rotate bone than translate child to the expected position along +Y
         bone.setTargetQuaternion(rotationQuat);
-        childBone.setTargetPosition(new THREE.Vector3(0, magnitide, 0));
+        childBone.setTargetPosition(new THREE.Vector3(0, magnitide * getModifiers()[ind] * this.scale, 0));
       }
     });
+    this.lastAlignedPose = this.targetPose;
   }
 
   getWorldPosition(poseId) {
@@ -140,14 +145,6 @@ export class PoseTree {
       ? getQuaternionForAlignmentVector(this.targetPose.alignmentVector)
       : new THREE.Quaternion();
     const worldPosition = this.targetPose.worldLandmarks[poseId].clone();
-
-    // Minor change we make to the world coordinates to the 
-    // hand and body face the 'right' way
-    if (config.poseType === 'BODY') {
-      worldPosition.multiply(new THREE.Vector3(-1, 1, -1));
-    } else {
-      worldPosition.multiplyScalar(-1);
-    }
     if (this.shouldAlign) worldPosition.applyQuaternion(alignQuat);
     worldPosition.multiplyScalar(this.getValueScalar());
     worldPosition.applyMatrix4(this.getRoot().matrixWorld);
@@ -183,12 +180,13 @@ export class SmartBone extends THREE.Bone {
     return SmartBone.instances;
   }
 
-  constructor(poseId) {
+  constructor(tree, poseId) {
     super();
+    this.parentTree = tree;
     this.poseId = poseId;
     SmartBone.instances.push(this);
 
-    if (config.debugMode) {
+    if (config.debugMode && !config.hideAxes) {
       const axis = new THREE.AxesHelper(10);
       axis.setColors(0xff0000, 0x00ff00, 0x0000ff); // RGB
       this.add(axis);
@@ -209,23 +207,48 @@ export class SmartBone extends THREE.Bone {
   update() {
     let updateDone = false;
     if (this.targetPosition) {
-      if (this.position.distanceTo(this.targetPosition) >= 5) {  // scale of the scene is like 1000 so
-        this.position.lerp(this.targetPosition, config.lerpFactor);
-        updateDone = true;
-      } else {
-        this.position.copy(this.targetPosition);
-      }
+      this.position.lerp(this.targetPosition, config.lerpFactor);
     }
     if (this.targetQuaternion) {
-      if (this.quaternion.angleTo(this.targetQuaternion) > 0.05) { // in radians 0 -> 6.28
-        this.quaternion.slerp(this.targetQuaternion, config.lerpFactor);
-        updateDone = true;
-      } else {
-        this.quaternion.copy(this.targetQuaternion);
-      }
+      this.quaternion.slerp(this.targetQuaternion, config.lerpFactor);
     }
     return updateDone;
   }
+}
+
+/**
+ * 
+ * @param {SmartBone} bone
+ * @param {number} poseId
+ */
+export function spawnTreeAtBone(bone, poseId) {
+  const pt = new PoseTree(poseId);
+  console.log('spawnTreeAtBone');
+
+  const parentPt = bone.parentTree;
+  pt.scale = parentPt.scale * config.scaleFactor;
+  bone.add(pt.getRoot());
+
+  skinPoseTree(pt);
+}
+
+function skinPoseTree(poseTree) {
+  const limbs = poseTree.getLimbs();
+  limbs.forEach(bones => {
+    const skeleton = new THREE.Skeleton(bones);
+    const mesh = getMemoizedSkinnedMesh(poseTree.scale);
+    const rootBone = bones[0];
+    const rootBoneParent = poseTree.getRoot().parent;
+    mesh.add(rootBone);
+    mesh.bind(skeleton);
+
+    window.POSE_COUNT++;
+    rootBoneParent.add(mesh);
+    if (config.debugMode && !config.hideAxes) {
+      const skeletonHelper = new THREE.SkeletonHelper(poseTree.getRoot());
+      scene.add(skeletonHelper);
+    }
+  })
 }
 
 /**
@@ -238,11 +261,11 @@ export function getMemoizedSkinnedMesh(scale) {
   }
   const segmentLength = 1;
   const boneCount = (config.poseType == 'HAND' ? 5 : 4); // I GET TO ASSUME BONE COUNT CAUSE ALL MY LIMBS HAVE THE SAME # BONES.
-  const sizing = config.poseType == 'HAND' ? 30 : 100;
+  const sizing = config.startingTrunkSize;
   const totalLength = segmentLength * (boneCount);
   const heightSegments = 10; // More segments = smoother skinning
 
-  const geometry = new THREE.CylinderGeometry(sizing * scale * config.scaleFactor, sizing * scale, totalLength, 8, heightSegments, true);
+  const geometry = new THREE.CylinderGeometry(sizing * scale * config.scaleFactor, sizing * scale, totalLength, 10, heightSegments, true);
   // Shift geometry so base is at y=0 (like the root bone)
   geometry.translate(0, totalLength / 2, 0);
 
