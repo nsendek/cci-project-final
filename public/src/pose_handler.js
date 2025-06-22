@@ -91,9 +91,15 @@ function processResults(results) {
       alignmentVector,
       center
     };
+
+    if (!isDistinctPose(currentPoses, pose)) {
+      continue;
+    }
+
     currentPoses.push(pose);
 
-    const buffer = getPoseBuffer(i);
+    const index = currentPoses.length - 1;
+    const buffer = getPoseBuffer(index);
     buffer.push(pose);
 
     let substractedPose;
@@ -101,7 +107,7 @@ function processResults(results) {
     if (buffer.length > config.poseBufferSize) {
       substractedPose = buffer.shift();
     }
-    const sumPose = getSumPose(i);
+    const sumPose = getSumPose(index);
 
     addPose(sumPose, pose);
     if (substractedPose) {
@@ -113,6 +119,27 @@ function processResults(results) {
 
   EventBus.getInstance().emit('exactPoses', currentPoses);
   EventBus.getInstance().emit('poses', getAveragePoses());
+}
+
+/**
+ * Returns false if the current pose's center X value is too close
+ * to other accepted poses. Threshold is 0.25 of image width.
+ * @param {Pose[]} currentPoses 
+ * @param {Pose} pose 
+ * @returns {boolean}
+ */
+function isDistinctPose(currentPoses, pose) {
+  if (!currentPoses.length) {
+    return true;
+  }
+  for (let i = 0; i < currentPoses.length; i++) {
+    const otherPose = currentPoses[i];
+    const xDiff = Math.abs(otherPose.center.x - pose.center.x);
+    if (xDiff <= config.distinctPoseThreshold) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
