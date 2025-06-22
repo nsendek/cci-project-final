@@ -9,6 +9,7 @@ import { EventBus } from './util.js';
 * @property {Vector3[]} landmarks - 2D coordinates to draw on a debug canvas (optional)
 * @property {Vector3[]} worldLandmarks - 3D coordinates to use in 3D environemnts.
 * @property {Vector3} alignmentVector - Average Alignment of all the 3D points from the pose root.
+* @property {Vector3} center - Center point of the pose in 2D landmark space (optional).
 */
 
 const POSE_SIZE = config.poseType == 'HAND' ? 21 : 33;
@@ -17,9 +18,14 @@ let video;
 let lastVideoTime = -1;
 let landmarker;
 let count = 0;
-let currentNumPoses = 0;
-let poses;
-let averagePoses;
+
+/** @type {Pose[]} */
+let currentPoses = [];
+
+/** @type {Pose[]} */
+let sumPoses = [];
+
+/** @type {Pose[][]} */
 let poseBuffers = [];
 
 export async function detectLandmarksForVideo(inputVideoEl) {
@@ -53,21 +59,12 @@ function detectLandmarks(callback) {
 }
 
 function processResults(results) {
-  if (!results) {
+  if (!results || !results.landmarks) {
     return;
   }
   const numPoses = results.landmarks.length;
-  if (!numPoses) {
-    return;
-  }
 
-  if (currentNumPoses > numPoses) {
-    // console.log('poses num changed')
-    // Drop the not used poses. How?
-    currentNumPoses = numPoses;
-  }
-
-  const out = []
+  currentPoses = [];
   for (let i = 0; i < numPoses; i++) {
     const [
       worldLandmarks,
@@ -81,22 +78,76 @@ function processResults(results) {
       worldLandmarks: worldLandmarks,
       alignmentVector,
     };
-    out.push(pose);
-    if (!poseBuffers[i]) {
-      poseBuffers[i] = [];
-    }
-    const buffer = poseBuffers[i];
+    currentPoses.push(pose);
+
+    const buffer = getPoseBuffer(i);
     buffer.push(pose);
 
+    let substractedPose;
+
     if (buffer.length > config.poseBufferSize) {
-      buffer.shift();
+      substractedPose = buffer.shift();
     }
+    const sumPose = getSumPose(i);
+
+    addPose(sumPose, pose);
+    if (substractedPose) {
+      subtractPose(sumPose, substractedPose);
+    }
+
     count++;
   }
-  poses = out;
-  averagePoses = getAveragePoses();
-  EventBus.getInstance().emit('poses', averagePoses);
-  EventBus.getInstance().emit('exactPoses', poses);
+
+  EventBus.getInstance().emit('exactPoses', currentPoses);
+  EventBus.getInstance().emit('poses', getAveragePoses());
+}
+
+function getPoseBuffer(index) {
+  if (!poseBuffers[index]) {
+    poseBuffers[index] = [];
+  }
+  return poseBuffers[index];
+}
+
+function getSumPose(index) {
+  if (!sumPoses[index]) {
+    sumPoses[index] = getBlankPose();
+  }
+  return sumPoses[index];
+}
+
+/**
+ * Add all vectors in poseB to poseA (in place).
+ * @param {Pose} poseA
+ * @param {Pose} poseB
+ */
+function addPose(poseA, poseB) {
+  poseA.alignmentVector.add(poseB.alignmentVector);
+
+  for (let i = 0; i < POSE_SIZE; i++) {
+    const landmarks = poseA.landmarks[i];
+    const worldLandmarks = poseA.worldLandmarks[i];
+
+    landmarks.add(poseB.landmarks[i]);
+    worldLandmarks.add(poseB.worldLandmarks[i]);
+  }
+}
+
+/**
+ * Subtrct all vectors in poseB from poseA (in place).
+ * @param {Pose} poseA
+ * @param {Pose} poseB
+ */
+function subtractPose(poseA, poseB) {
+  poseA.alignmentVector.sub(poseB.alignmentVector);
+
+  for (let i = 0; i < POSE_SIZE; i++) {
+    const landmarks = poseA.landmarks[i];
+    const worldLandmarks = poseA.worldLandmarks[i];
+
+    landmarks.sub(poseB.landmarks[i]);
+    worldLandmarks.sub(poseB.worldLandmarks[i]);
+  }
 }
 
 function createVectorFromObject(point) {
@@ -144,51 +195,39 @@ function convertWorldLandmarksAndAlignment(worldLandmarks) {
  * @returns {Pose[]}
  */
 function getAveragePoses() {
-  return poseBuffers.map(buffer => getAverageFromPoseBuffer(buffer));
+  return sumPoses.map((sumPose, i) => {
+    const bufferSizeInv = 1.0 / getPoseBuffer(i).length;
+    const out = getBlankPose();
+
+    out.alignmentVector.add(sumPose.alignmentVector).multiplyScalar(bufferSizeInv);
+
+    for (let i = 0; i < POSE_SIZE; i++) {
+      const landmark = out.landmarks[i];
+      const worldLandmark = out.worldLandmarks[i];
+      landmark.add(sumPose.landmarks[i]).multiplyScalar(bufferSizeInv);
+      worldLandmark.add(sumPose.worldLandmarks[i]).multiplyScalar(bufferSizeInv);
+    }
+    return out;
+  });
 }
 
 /**
- * @param {Pose[]} buffer - Last three samples of the same Pose that will be averaged out to a single sample.
  * @returns {Pose}
  */
-function getAverageFromPoseBuffer(buffer) {
-  if (buffer.length !== config.poseBufferSize) {
-    return undefined;
+function getBlankPose() {
+  const landmarks = [];
+  const worldLandmarks = [];
+
+  for (let j = 0; j < POSE_SIZE; j++) {
+    landmarks.push(new Vector3(0, 0, 0));
+    worldLandmarks.push(new Vector3(0, 0, 0));
   }
-  /** @type {Pose} */
-  const out = {
-    landmarks: [],
-    worldLandmarks: [],
+
+  return {
+    landmarks,
+    worldLandmarks,
     alignmentVector: new Vector3(0, 0, 0)
   };
-  const bufferSizeInv = 1.0 / config.poseBufferSize;
-
-  for (let i = 0; i < config.poseBufferSize; i++) {
-    const endOfBuffer = i === (config.poseBufferSize - 1);
-    const pose = buffer[i];
-
-    out.alignmentVector.add(pose.alignmentVector);
-    if (endOfBuffer) {
-      out.alignmentVector.multiplyScalar(bufferSizeInv);
-    }
-
-    for (let j = 0; j < POSE_SIZE; j++) {
-      if (i == 0) { // First pose sample.
-        out.landmarks[j] = new Vector3(0, 0, 0);
-        out.worldLandmarks[j] = new Vector3(0, 0, 0);
-      }
-      const landmarks = out.landmarks[j];
-      const worldLandmarks = out.worldLandmarks[j];
-      landmarks.add(pose.landmarks[j]);
-      worldLandmarks.add(pose.worldLandmarks[j]);
-
-      if (endOfBuffer) {
-        landmarks.multiplyScalar(bufferSizeInv);
-        worldLandmarks.multiplyScalar(bufferSizeInv);
-      }
-    }
-  }
-  return out;
 }
 
 async function createLandmarker() {
