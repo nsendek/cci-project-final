@@ -60,8 +60,7 @@ export const sketch = (p) => {
   }
 
   p.draw = () => {
-    // Draw the webcam video
-    p.background(0);
+    p.clear();
 
     p.image(video, 0, 0, p.width, p.height);
 

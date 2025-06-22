@@ -52,8 +52,6 @@ function init() {
 }
 
 function render() {
-  // Do a little recursing.
-  requestAnimationFrame(render);
   currentTime = Date.now();
 
   if (controls) {
@@ -71,8 +69,10 @@ function render() {
   });
 
   renderer.render(scene, camera);
-
   lastTime = currentTime;
+
+  // Do a little recursing.
+  requestAnimationFrame(render);
 }
 
 function setupProd() {
@@ -140,13 +140,6 @@ function setupTree() {
 
   worldTreeRoot.add(poseTree.getRoot());
 
-  if (config.poseType == "BODY") {
-    // root.position.y += 1000;
-    // worldTreeRoot.rotation.z = Math.PI;
-    // const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
-    // scene.quaternion.copy(rotation);
-    // scene.updateMatrixWorld(true);
-  }
   // Simple
   recurseFill(poseTree, 2);
 
