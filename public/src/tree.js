@@ -110,7 +110,7 @@ export class PoseTree {
   }
 
   update() {
-    if (!this.targetPose || this.targetPose == this.lastAlignedPose) {
+    if (!this.targetPose) {
       return;
     }
     this.align();
@@ -119,6 +119,7 @@ export class PoseTree {
   align() {
     this.getRoot().updateMatrixWorld(true);
     this.limbs.forEach((limb, ind) => {
+      let prevX = new THREE.Vector3(1, 0, 0);
       for (let i = 0; i < limb.length - 1; i++) {
         const bone = limb[i];
         const childBone = limb[i + 1];
@@ -129,11 +130,23 @@ export class PoseTree {
         const childWorldPosition = this.getWorldPosition(childBone.poseId);
         const worldOffset = new THREE.Vector3().subVectors(childWorldPosition, boneWorldPosition);
 
+        // I can use worldOffset because we know scale is never changed across bones.
         const magnitide = worldOffset.length();
 
-        const targetUp = worldOffset.clone().normalize(); // target up axis in world space.
-        const localUp = new THREE.Vector3(0, 1, 0); // node local up axis.
-        const rotationQuat = new THREE.Quaternion().setFromUnitVectors(localUp, targetUp);
+        const yAxis = worldOffset.clone().normalize(); // target up axis in world space.
+
+        let xAxis = prevX.clone().projectOnPlane(yAxis).normalize();
+        if (xAxis.lengthSq() < 1e-6) {
+          prevX.add(new THREE.Vector3(0.1, 0.2, 0.3)).normalize();
+          xAxis = prevX.clone().projectOnPlane(yAxis).normalize();
+        }
+  
+        const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+
+        // Building basis this way so that everything aligns and no twisting
+        // orientation across bones
+        const basisMatrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+        const rotationQuat = new THREE.Quaternion().setFromRotationMatrix(basisMatrix);
 
         const parentWorldQuatInvert = new THREE.Quaternion();
         bone.parent.getWorldQuaternion(parentWorldQuatInvert).invert();
@@ -142,10 +155,15 @@ export class PoseTree {
 
         // Rotate bone than translate child to the expected position along +Y
         bone.setTargetQuaternion(rotationQuat);
-        childBone.setTargetPosition(new THREE.Vector3(0, magnitide * getModifiers()[ind] * this.branchLengthScale, 0));
+  
+        // Interpolate position so tree growth looks a bit smoother.
+        childBone.setTargetPosition(
+          new THREE.Vector3(0, magnitide * getModifiers()[ind] * this.branchLengthScale, 0)
+        );
+        prevX.copy(xAxis);
       }
     });
-    this.lastAlignedPose = this.targetPose;
+    this.targetPose = null;
   }
 
   getWorldPosition(poseId) {
@@ -241,6 +259,13 @@ export function spawnTreeAtBone(bone, poseId) {
 }
 
 function skinPoseTree(poseTree) {
+  if (config.debugMode && !config.hideAxes) {
+    const skeletonHelper = new THREE.SkeletonHelper(poseTree.getRoot());
+    scene.add(skeletonHelper);
+  }
+  if (config.hideMesh) {
+    return;
+  }
   const limbs = poseTree.getLimbs();
   limbs.forEach(bones => {
     const skeleton = new THREE.Skeleton(bones);
@@ -252,11 +277,7 @@ function skinPoseTree(poseTree) {
 
     window.POSE_COUNT++;
     rootBoneParent.add(mesh);
-    if (config.debugMode && !config.hideAxes) {
-      const skeletonHelper = new THREE.SkeletonHelper(poseTree.getRoot());
-      scene.add(skeletonHelper);
-    }
-  })
+  });
 }
 
 /**
@@ -276,10 +297,11 @@ export function getMemoizedSkinnedMesh(scale) {
 
   const geometry = new THREE.CylinderGeometry(
     startSize * scale * config.branchWidthScale, 
-    startSize * scale, totalLength, 
+    startSize * scale,
+    totalLength,
     10, 
     heightSegments, 
-    true
+    false
   );
   // Shift geometry so base is at y=0 (like the root bone)
   geometry.translate(0, totalLength / 2, 0);
