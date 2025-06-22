@@ -1,11 +1,12 @@
 import { detectLandmarksForVideo } from './pose_handler.js';
-import { EventBus } from './util.js';
+import { EventBus , getPoseLimbs} from './util.js';
 
 export const sketch = (p) => {
   let video;
   let poses = [];
+  let averagePoses = [];
   let videoToCanvasScale = 0.75
-
+  let relevantIndices = [];
   p.setup = () => {
     const canvas = p.createCanvas(640 * videoToCanvasScale, 480 * videoToCanvasScale);
     canvas.elt.addEventListener('click', () => {
@@ -16,6 +17,15 @@ export const sketch = (p) => {
     } else {
       useWebcam();
     }
+
+    const limbs = getPoseLimbs();
+    limbs.forEach(bones => {
+      bones.forEach(poseIndex => {
+        if (!limbs.includes(poseIndex)) {
+          relevantIndices.push(poseIndex);
+        }
+      });
+    });
   }
 
   function useWebcam() {
@@ -41,6 +51,10 @@ export const sketch = (p) => {
     detectLandmarksForVideo(video.elt);
 
     EventBus.getInstance().on('poses', (response) => {
+      averagePoses = response;
+    });
+
+    EventBus.getInstance().on('exactPoses', (response) => {
       poses = response;
     });
   }
@@ -51,45 +65,46 @@ export const sketch = (p) => {
 
     p.image(video, 0, 0, p.width, p.height);
 
-    // 2D landmarks
     poses.forEach((pose, k) => {
       if (!pose || !pose.landmarks) {
         return;
       } 
-      for (let i = 0; i < pose.landmarks.length; i++) {
+      relevantIndices.forEach(i => {
         let point = pose.landmarks[i];
         if (point) {
-          setFill(k);
+          setFillOrStroke(k, true);
+          p.noFill();
+          p.circle(point.x * p.width, point.y * p.height, 10);
+        }
+      })
+    })
+
+    averagePoses.forEach((pose, k) => {
+      if (!pose) return;
+      relevantIndices.forEach(i => {
+        let point = pose.landmarks[i];
+        if (point) {
+          setFillOrStroke(k);
           p.noStroke();
           p.circle(point.x * p.width, point.y * p.height, 5);
         }
-      }
+      })
     })
-
-    // Averaged landmarks
-    // averagePoses.forEach(pose => {
-    //   if (!pose) return;
-    //   for (let i = 0; i < pose.landmarks.length; i++) {
-    //     let point = pose.landmarks[i];
-    //     if (point) {
-    //       p.fill(0, 0, 255);
-    //       p.noStroke();
-    //       p.circle(point.x * p.width, point.y * p.height, 10);
-    //     }
-    //   }
-    // })
   }
 
-  function setFill(poseId) {
+  function setFillOrStroke(poseId, isStroke) {
+    const colorFn = (...args) => {
+      isStroke ? p.stroke(...args) : p.fill(...args);
+    };
     switch (poseId) {
       case 0:
-        p.fill(255, 0, 0);
+        colorFn(255, 0, 0);
         break;
       case 1:
-        p.fill(0, 255, 0);
+        colorFn(0, 255, 0);
         break;
       case 2:
-        p.fill(0, 0, 255);
+        colorFn(0, 0, 255);
         break;
       default:
     }
