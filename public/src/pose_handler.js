@@ -6,7 +6,7 @@ import { EventBus } from './util.js';
 * How MediaPipe defines keypoints in there poses, this is different from ThreeJS
 * @typedef {Object} Pose
 * @property {number|undefined} id (optional)
-* @property {Vector3[]} landmarks - 2D coordinates to draw on a debug canvas (optional)
+* @property {Vector3[]} landmarks - 2D coordinates to draw on a debug canvas
 * @property {Vector3[]} worldLandmarks - 3D coordinates to use in 3D environemnts.
 * @property {Vector3} alignmentVector - Average Alignment of all the 3D points from the pose root.
 * @property {Vector3} center - Center point of the pose in 2D landmark space (optional).
@@ -69,14 +69,20 @@ function processResults(results) {
     const [
       worldLandmarks,
       alignmentVector
-    ] = convertWorldLandmarksAndAlignment(results.worldLandmarks[i]);
+    ] = formatWorldLandmarks(results.worldLandmarks[i]);
+
+    const [
+      landmarks,
+      center
+    ] = formatLandmarks(results.landmarks[i]);
 
     /** @type {Pose} */
     const pose = {
       id: count,
-      landmarks: results.landmarks[i].map(createVectorFromObject), // Not needed.
-      worldLandmarks: worldLandmarks,
+      landmarks,
+      worldLandmarks,
       alignmentVector,
+      center
     };
     currentPoses.push(pose);
 
@@ -123,6 +129,7 @@ function getSumPose(index) {
  */
 function addPose(poseA, poseB) {
   poseA.alignmentVector.add(poseB.alignmentVector);
+  poseA.center.add(poseB.center);
 
   for (let i = 0; i < POSE_SIZE; i++) {
     const landmarks = poseA.landmarks[i];
@@ -140,6 +147,7 @@ function addPose(poseA, poseB) {
  */
 function subtractPose(poseA, poseB) {
   poseA.alignmentVector.sub(poseB.alignmentVector);
+  poseA.center.sub(poseB.center);
 
   for (let i = 0; i < POSE_SIZE; i++) {
     const landmarks = poseA.landmarks[i];
@@ -150,11 +158,22 @@ function subtractPose(poseA, poseB) {
   }
 }
 
+/**
+ * @param {{x:number; y:number; z:number;}}  point 
+ * @returns {Vector3}
+ */
 function createVectorFromObject(point) {
   return new Vector3(point.x, point.y, point.z);
 }
 
-function convertWorldLandmarksAndAlignment(worldLandmarks) {
+/**
+ * Formats the world landmarks so they are in positive space with +Y as up axis.
+ * Also calculates and returns the alignment vector based on landmarks.
+ * 
+ * @param {{x:number; y:number; z:number;}[]} worldLandmarks 
+ * @returns {[Vector3[], Vector3]}
+ */
+function formatWorldLandmarks(worldLandmarks) {
   // This function preformats the world coords such that
   // its easier to work with in my scene.
   // Minor change we make to the world coordinates to the 
@@ -174,20 +193,42 @@ function convertWorldLandmarksAndAlignment(worldLandmarks) {
   const alignmentVector = new Vector3(0, 0, 0);
 
   for (let i = 1; i < worldLandmarks.length; i++) {
-    const landmark = createVectorFromObject(worldLandmarks[i]);
-    formatWorldLandmark(landmark);
-    vectors.push(landmark);
+    const worldLandmark = createVectorFromObject(worldLandmarks[i]);
+    formatWorldLandmark(worldLandmark);
+    vectors.push(worldLandmark);
 
     // We align the body using its legs, since the arms can be above the 'root' head
     if (config.poseType == 'HAND' || (i >= 23 && i <= 28)) {
       alignmentVector.add(
-        new Vector3().subVectors(landmark, rootVector)
+        new Vector3().subVectors(worldLandmark, rootVector)
       );
     }
   }
 
   alignmentVector.normalize();
   return [vectors, alignmentVector];
+}
+
+/**
+ * Formats the world landmarks so they are in positive space with +Y as up axis.
+ * Also calculates and returns the center point in 'landmark' space.
+ * 
+ * @param {{x:number; y:number; z:number;}[]} landmarks 
+ * @returns {[Vector3[], Vector3]}
+ */
+function formatLandmarks(landmarks) {
+  const vectors = []
+  const centerPoint = new Vector3(0, 0, 0);
+
+  for (let i = 0; i < landmarks.length; i++) {
+    const landmark = createVectorFromObject(landmarks[i]);
+    vectors.push(landmark);
+
+    centerPoint.add(landmark);
+  }
+
+  centerPoint.multiplyScalar(1.0 / landmarks.length);
+  return [vectors, centerPoint];
 }
 
 /**
@@ -200,6 +241,7 @@ function getAveragePoses() {
     const out = getBlankPose();
 
     out.alignmentVector.add(sumPose.alignmentVector).multiplyScalar(bufferSizeInv);
+    out.center.add(sumPose.center).multiplyScalar(bufferSizeInv);
 
     for (let i = 0; i < POSE_SIZE; i++) {
       const landmark = out.landmarks[i];
@@ -226,7 +268,8 @@ function getBlankPose() {
   return {
     landmarks,
     worldLandmarks,
-    alignmentVector: new Vector3(0, 0, 0)
+    alignmentVector: new Vector3(0, 0, 0),
+    center: new Vector3(0, 0, 0)
   };
 }
 

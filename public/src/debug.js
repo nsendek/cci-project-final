@@ -1,5 +1,5 @@
 import { detectLandmarksForVideo } from './pose_handler.js';
-import { EventBus , getPoseLimbs} from './util.js';
+import { EventBus, getPoseLimbs } from './util.js';
 
 export const sketch = (p) => {
   let video;
@@ -64,36 +64,47 @@ export const sketch = (p) => {
 
     p.image(video, 0, 0, p.width, p.height);
 
+    averagePoses.forEach((pose, k) => {
+      if (!pose) return;
+      if (config.drawCenterPointInDebug) {
+        p.fill('black');
+        p.circle(pose.center.x * p.width, pose.center.y * p.height, 15);
+      }
+      relevantIndices.forEach(i => {
+        let point = pose.landmarks[i];
+        if (!point) return;
+        p.push();
+        setFillOrStroke(k);
+        p.noStroke();
+        p.circle(point.x * p.width, point.y * p.height, 5);
+        p.pop();
+      })
+    });
+
     poses.forEach((pose, k) => {
       if (!pose || !pose.landmarks) {
         return;
-      } 
+      }
       relevantIndices.forEach(i => {
         let point = pose.landmarks[i];
-        if (point) {
-          setFillOrStroke(k, true);
-          p.noFill();
-          p.circle(point.x * p.width, point.y * p.height, 10);
-        }
+        if (!point) return;
+        p.push();
+        setFillOrStroke(k, true);
+        p.circle(point.x * p.width, point.y * p.height, 10);
+        p.pop();
       })
-    })
-
-    averagePoses.forEach((pose, k) => {
-      if (!pose) return;
-      relevantIndices.forEach(i => {
-        let point = pose.landmarks[i];
-        if (point) {
-          setFillOrStroke(k);
-          p.noStroke();
-          p.circle(point.x * p.width, point.y * p.height, 5);
-        }
-      })
-    })
+    });
   }
 
   function setFillOrStroke(poseId, isStroke) {
     const colorFn = (...args) => {
-      isStroke ? p.stroke(...args) : p.fill(...args);
+      if (isStroke) {
+        p.stroke(...args);
+        p.noFill();
+      } else {
+        p.fill(...args);
+        p.noStroke();
+      }
     };
     switch (poseId) {
       case 0:
