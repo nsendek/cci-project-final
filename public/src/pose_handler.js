@@ -3,7 +3,8 @@ import { Vector3 } from 'three';
 import { EventBus } from './util.js';
 
 /**
-* How MediaPipe defines keypoints in there poses, this is different from ThreeJS
+* This is how I'm processing and sending Pose data from the Mediapipe to World Tree. 
+* Eventbus emits a 'pose' event that contains up to 3 poses objects containing:
 * @typedef {Object} Pose
 * @property {number|undefined} id (optional)
 * @property {Vector3[]} landmarks - 2D coordinates to draw on a debug canvas
@@ -47,6 +48,7 @@ function detectionLoop() {
     detectLandmarks(processResults);
     lastVideoTime = video.currentTime;
   }
+  // Do a little recursing.
   requestAnimationFrame(detectionLoop);
 }
 
@@ -58,6 +60,11 @@ function detectLandmarks(callback) {
   }
 }
 
+/**
+ * Convert Mediapipe results to 
+ * @param {Object} results 
+ * @returns 
+ */
 function processResults(results) {
   if (!results || !results.landmarks) {
     return;
@@ -108,6 +115,13 @@ function processResults(results) {
   EventBus.getInstance().emit('poses', getAveragePoses());
 }
 
+/**
+ * Returns the Buffer for a given index and initializes
+ * it if not present.
+ * 
+ * @param {number} index 
+ * @returns {Pose[]}
+ */
 function getPoseBuffer(index) {
   if (!poseBuffers[index]) {
     poseBuffers[index] = [];
@@ -115,6 +129,13 @@ function getPoseBuffer(index) {
   return poseBuffers[index];
 }
 
+/**
+ * Returns the Sum Pose for a given index and initializes
+ * it if not present.
+ * 
+ * @param {number} index 
+ * @returns {Pose}
+ */
 function getSumPose(index) {
   if (!sumPoses[index]) {
     sumPoses[index] = getBlankPose();
@@ -197,8 +218,9 @@ function formatWorldLandmarks(worldLandmarks) {
     formatWorldLandmark(worldLandmark);
     vectors.push(worldLandmark);
 
-    // We align the body using its legs, since the arms can be above the 'root' head
-    if (config.poseType == 'HAND' || (i >= 23 && i <= 28)) {
+    // We align the body using its hip points 23 -> 24, 
+    // since the other points have very high variability.
+    if (config.poseType == 'HAND' || (i >= 23 && i <= 24)) {
       alignmentVector.add(
         new Vector3().subVectors(worldLandmark, rootVector)
       );
@@ -273,6 +295,9 @@ function getBlankPose() {
   };
 }
 
+/**
+ * Refer to https://ai.google.dev/edge/mediapipe/solutions/guide
+ */
 async function createLandmarker() {
   const vision = await FilesetResolver.forVisionTasks(
     "/libs/mediapipe/tasks-vision/wasm"
