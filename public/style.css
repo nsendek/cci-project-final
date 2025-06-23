@@ -5,7 +5,7 @@ body {
   height: 100vh;
 }
 
-#debugText {
+#debug {
   position: absolute;
   font-size: 1em;
   z-index: 1;
