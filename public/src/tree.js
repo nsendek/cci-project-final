@@ -46,11 +46,12 @@ export class PoseTree {
   branchLengthScale = 1;
 
   /**
+   * @param {THREE.Object3D} [parent] 
    * @param {number} [poseId=0] 
    * @param {boolean} [shouldAlign=false] - If true then when setting the new targetPose,
    *  we will align the points along the local up axis (+Y).
    */
-  constructor(poseId = 0, shouldAlign = false) {
+  constructor(parent, poseId = 0, shouldAlign = false) {
     this.poseId = poseId;
     this.shouldAlign = shouldAlign;
 
@@ -84,6 +85,16 @@ export class PoseTree {
 
     PoseTree.instances.push(this);
 
+    // Add tree root to the parent, if the parent is a part of another poseTree,
+    // scale down the scale of this tree, accordingly.
+    parent.add(this.getRoot());
+
+    if (parent.parentTree) {
+      this.stepDownScales(parent.parentTree);
+    }
+
+    skinPoseTree(this);
+
     // setTimeout(() => {
     //   if (window.POSE_COUNT > 1000) {
     //     return;
@@ -105,12 +116,11 @@ export class PoseTree {
   }
 
   setTarget(targetPose) {
-    // if (!this.root.visible) this.root.visible = false;
     this.targetPose = targetPose;
   }
 
   update() {
-    if (!this.targetPose) {
+    if (!this.targetPose || this.lastUpdatedPose === this.targetPose) {
       return;
     }
     this.align();
@@ -126,8 +136,8 @@ export class PoseTree {
 
         bone.updateMatrixWorld();
 
-        const boneWorldPosition = this.getWorldPosition(bone.poseId);
-        const childWorldPosition = this.getWorldPosition(childBone.poseId);
+        const boneWorldPosition = this.getWorldPosition(bone.boneId);
+        const childWorldPosition = this.getWorldPosition(childBone.boneId);
         const worldOffset = new THREE.Vector3().subVectors(childWorldPosition, boneWorldPosition);
 
         // I can use worldOffset because we know scale is never changed across bones.
@@ -163,14 +173,14 @@ export class PoseTree {
         prevX.copy(xAxis);
       }
     });
-    this.targetPose = null;
+    this.lastUpdatedPose = this.targetPose;
   }
 
-  getWorldPosition(poseId) {
+  getWorldPosition(boneId) {
     const alignQuat = this.shouldAlign
       ? getQuaternionForAlignmentVector(this.targetPose.alignmentVector)
       : new THREE.Quaternion();
-    const worldPosition = this.targetPose.worldLandmarks[poseId].clone();
+    const worldPosition = this.targetPose.worldLandmarks[boneId].clone();
     if (this.shouldAlign) worldPosition.applyQuaternion(alignQuat);
     worldPosition.multiplyScalar(this.getValueScalar());
     worldPosition.applyMatrix4(this.getRoot().matrixWorld);
@@ -200,16 +210,20 @@ export class SmartBone extends THREE.Bone {
   // Static property to track instances
   static instances = [];
 
-  poseId = 0;
+  boneId = 0;
 
   static getInstances() {
     return SmartBone.instances;
   }
 
-  constructor(tree, poseId) {
+  /**
+   * @param {PoseTree} tree 
+   * @param {number} boneId 
+   */
+  constructor(tree, boneId) {
     super();
-    this.parentTree = tree;
-    this.poseId = poseId;
+    this.parentTree /** @type {PoseTree} */ = tree;
+    this.boneId = boneId;
     SmartBone.instances.push(this);
 
     if (config.debugMode && !config.hideAxes) {
@@ -248,14 +262,7 @@ export class SmartBone extends THREE.Bone {
  * @param {number} poseId
  */
 export function spawnTreeAtBone(bone, poseId) {
-  const pt = new PoseTree(poseId, true);
-  console.log('spawnTreeAtBone');
-
-  const parentPt = bone.parentTree;
-  pt.stepDownScales(parentPt);
-  bone.add(pt.getRoot());
-
-  skinPoseTree(pt);
+  const newPt = new PoseTree(bone, poseId, true);
 }
 
 function skinPoseTree(poseTree) {
@@ -271,12 +278,11 @@ function skinPoseTree(poseTree) {
     const skeleton = new THREE.Skeleton(bones);
     const mesh = getMemoizedSkinnedMesh(poseTree.branchWidthScale);
     const rootBone = bones[0];
-    const rootBoneParent = poseTree.getRoot().parent;
     mesh.add(rootBone);
     mesh.bind(skeleton);
 
     window.POSE_COUNT++;
-    rootBoneParent.add(mesh);
+    poseTree.getRoot().add(mesh);
   });
 }
 

@@ -31,7 +31,6 @@ function main() {
 function init() {
   camera = new THREE.PerspectiveCamera(110, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.z = ROOM_SIZE / 2;
-  camera.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
   camera.updateProjectionMatrix();
   scene = new THREE.Scene();
   renderer = new THREE.WebGLRenderer();
@@ -155,27 +154,13 @@ function setupEnviroment() {
 }
 
 function setupTree() {
-  poseTree = new PoseTree(0, config.alignAllPosesUp);
-  // if (poseTree.debugMode)
   worldTreeRoot = new THREE.Group();
-  scene.add(worldTreeRoot)
+  scene.add(worldTreeRoot);
 
-  worldTreeRoot.add(poseTree.getRoot());
+  poseTree = new PoseTree(worldTreeRoot, 0, config.alignAllPosesUp);
 
   // Simple
   recurseFill(poseTree, 2);
-
-  if (config.debugMode && !config.hideAxes) {
-    const skeletonHelper = new THREE.SkeletonHelper(poseTree.getRoot());
-    scene.add(skeletonHelper);
-  }
-
-  if (config.hideMesh) {
-    return;
-  }
-  PoseTree.getInstances().forEach(poseTree => {
-    skinPoseTree(poseTree);
-  });
 }
 
 function recurseFill(parentTree, level = 1, maxLevel = level) {
@@ -187,11 +172,8 @@ function recurseFill(parentTree, level = 1, maxLevel = level) {
   ends.forEach(end => {
     poseCount++;
     const shouldAlignChildren = config.poseType == 'HAND';
-    // const pt = new PoseTree(poseCount % config.maxPoses, shouldAlignChildren);
-    const pt = new PoseTree(0, shouldAlignChildren);
-
-    pt.stepDownScales(parentTree);
-    end.add(pt.getRoot());
+    // const pt = new PoseTree(end, poseCount % config.maxPoses, shouldAlignChildren);
+    const pt = new PoseTree(end, 0, shouldAlignChildren);
 
     recurseFill(pt, level - 1, maxLevel);
   });
@@ -210,27 +192,9 @@ function recurseFill(parentTree, level = 1, maxLevel = level) {
   //   pt.stepDownScales(parentTree);
   //   bone.add(pt.getRoot());
 
-  //   recurseFill(pt, level - 1, maxLevel);
-  // });
-}
+  //     recurseFill(pt, level - 1, maxLevel);
+  //   });
 
-function randomPoseId() {
-  return Math.floor(Math.random() * config.maxPoses);
-}
-
-function skinPoseTree(poseTree) {
-  const limbs = poseTree.getLimbs();
-  limbs.forEach(bones => {
-    const skeleton = new THREE.Skeleton(bones);
-    const mesh = getMemoizedSkinnedMesh(poseTree.branchWidthScale);
-    const rootBone = bones[0];
-    const rootBoneParent = poseTree.getRoot().parent;
-    mesh.add(rootBone);
-    mesh.bind(skeleton);
-
-    window.POSE_COUNT++;
-    rootBoneParent.add(mesh);
-  })
 }
 
 function createAngleBone() {
