@@ -85,6 +85,14 @@ export const sketch = (p) => {
       if (!pose || !pose.landmarks) {
         return;
       }
+      if (pose.bbox && config.drawPoseBoundingBox) {
+        p.stroke('white');
+        p.noFill();
+        const [min, max] = pose.bbox;
+        const xDiff = max.x - min.x;
+        const yDiff = max.y - min.y;
+        p.rect(min.x * p.width, min.y * p.height, xDiff * p.width, yDiff * p.height)
+      }
       relevantIndices.forEach(i => {
         let point = pose.landmarks[i];
         if (!point) return;

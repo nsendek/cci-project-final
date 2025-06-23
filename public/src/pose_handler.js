@@ -1,5 +1,5 @@
 import { PoseLandmarker, FilesetResolver, HandLandmarker } from 'mediapipe';
-import { Vector3 } from 'three';
+import { Vector3, Vector2} from 'three';
 import { EventBus } from './util.js';
 
 /**
@@ -11,6 +11,7 @@ import { EventBus } from './util.js';
 * @property {Vector3[]} worldLandmarks - 3D coordinates to use in 3D environemnts.
 * @property {Vector3} alignmentVector - Average Alignment of all the 3D points from the pose root.
 * @property {Vector3} center - Center point of the pose in 2D landmark space (optional).
+* @property {Vector2[]} bbox - 2D Array of the bounding box of the pose in 2D landmark space.
 */
 
 const POSE_SIZE = config.poseType == 'HAND' ? 21 : 33;
@@ -80,7 +81,8 @@ function processResults(results) {
 
     const [
       landmarks,
-      center
+      center,
+      bbox
     ] = formatLandmarks(results.landmarks[i]);
 
     /** @type {Pose} */
@@ -89,7 +91,8 @@ function processResults(results) {
       landmarks,
       worldLandmarks,
       alignmentVector,
-      center
+      center,
+      bbox
     };
 
     if (!isDistinctPose(currentPoses, pose)) {
@@ -263,21 +266,39 @@ function formatWorldLandmarks(worldLandmarks) {
  * Also calculates and returns the center point in 'landmark' space.
  * 
  * @param {{x:number; y:number; z:number;}[]} landmarks 
- * @returns {[Vector3[], Vector3]}
+ * @returns {[Vector3[], Vector3, Vector2[]]}
  */
 function formatLandmarks(landmarks) {
   const vectors = []
   const centerPoint = new Vector3(0, 0, 0);
-
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  
   for (let i = 0; i < landmarks.length; i++) {
     const landmark = createVectorFromObject(landmarks[i]);
     vectors.push(landmark);
-
     centerPoint.add(landmark);
+
+    if (landmark.x < minX) {
+      minX = landmark.x;
+    } else if (landmark.x > maxX) {
+      maxX = landmark.x;
+    }
+    if (landmark.y < minY) {
+      minY = landmark.y;
+    } else if (landmark.y > maxY) {
+      maxY = landmark.y;
+    }
   }
 
   centerPoint.multiplyScalar(1.0 / landmarks.length);
-  return [vectors, centerPoint];
+  return [
+    vectors, 
+    centerPoint, 
+    [new Vector2(minX, minY), new Vector2(maxX, maxY)]
+  ];
 }
 
 /**
