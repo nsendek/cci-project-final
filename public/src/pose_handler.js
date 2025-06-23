@@ -17,6 +17,7 @@ import { EventBus } from './util.js';
 const POSE_SIZE = config.poseType == 'HAND' ? 21 : 33;
 
 let video;
+let lastUpdateTime = -1;
 let lastVideoTime = -1;
 let landmarker;
 let count = 0;
@@ -45,9 +46,14 @@ function detectionLoop() {
   if (!landmarker) {
     return;
   }
-  if (video.currentTime !== lastVideoTime) {
-    detectLandmarks(processResults);
-    lastVideoTime = video.currentTime;
+  const currentTime = performance.now();
+  if ((currentTime - lastUpdateTime) >= config.updateTimeDelta) {
+    lastUpdateTime = currentTime;
+    // Also check video time as so updates stop when paused or buffering.
+    if (video.currentTime !== lastVideoTime) {
+      detectLandmarks(processResults);
+      lastVideoTime = video.currentTime;
+    }
   }
   // Do a little recursing.
   requestAnimationFrame(detectionLoop);
