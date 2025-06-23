@@ -14,39 +14,46 @@
 
   <script>
     let config = {
-      poseType: 'HAND',
-      debugMode: true,
       alignAllPosesUp: true,
       constantPoseSegmentSizes: false,
+      debugMode: true,
+      distinctPoseThreshold: 0.25,
+      drawCenterPointInDebug: true,
+      drawPoseBoundingBox: true,
       flatShading: true,
-      hideMesh: false,
-      hideAxes: false,
+      // hideMesh: true,
+      hideAxes: true,
+      // positionLerpFactor: 0.35,
+      // rotationLerpFactor: 0.35,
       lerpFactor: 0.35,
-      poseBufferSize: 1,
+      poseType: 'BODY',
       maxPoses: 3,
     };
 
     const handConfig = {
-      // videoUrl: '/videos/holding_hand.mov',
-      startingTrunkSize: 30,
-      scaleFactor: 0.30,
       branchLengthScale: 0.55,
       branchWidthScale: 0.55,
+      poseBufferSize: 5,
+      startingTrunkSize: 30,
+      videoUrl: '/videos/holding_hand.mov',
     };
 
     const bodyConfig = {
+      alignAllPosesUp: true,
+      branchLengthScale: 0.50,
+      branchWidthScale: 0.35,
       poseBufferSize: 20,
       startingTrunkSize: 50,
-      scaleFactor: 0.55,
-      branchLengthScale: 0.55,
-      branchWidthScale: 0.35,
+
       videoUrl: "/videos/dan_3D_test.mov",
       // videoUrl: "/videos/dan_jumping-jack.mov",
-      // videoUrl: "/videos/double_jumping.mov",
+      // videoUrl: "/videos/double_jumping_2.mov",
       // videoUrl: '/videos/people_walking.mp4',
+      // videoUrl: '/videos/lobby_test.mov',
+      // videoUrl: '/videos/lobby_test_2.mov',
     };
 
-    // Merge the correct followup configd based on whether
+    // Merge the correct followup sub config based on whether
     // we're tracking hand or body
     config = {
       ...config,
