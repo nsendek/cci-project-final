@@ -45,6 +45,8 @@ export class PoseTree {
   branchWidthScale = 1;
   branchLengthScale = 1;
 
+  lastUpdateTime = -1;
+
   /**
    * @param {THREE.Object3D} [parent] 
    * @param {number} [poseId=0] 
@@ -123,7 +125,11 @@ export class PoseTree {
     if (!this.targetPose || this.lastUpdatedPose === this.targetPose) {
       return;
     }
-    this.align();
+    const currentTime = performance.now();
+    if ((currentTime - this.lastUpdateTime) > config.updateTimeDelta) {
+      this.align();
+      this.lastUpdateTime = currentTime;
+    }
   }
 
   align() {
