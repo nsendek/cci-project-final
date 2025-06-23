@@ -3,8 +3,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PoseTree, SmartBone, getMemoizedSkinnedMesh } from './src/tree.js'
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+import Stats from 'three/addons/libs/stats.module.js';
 
-let camera, renderer, controls, poseTree, worldTreeRoot, gui, folder;
+let camera, renderer, controls, poseTree, worldTreeRoot, gui, folder, stats;
 
 let lastTime = Date.now();
 let currentTime = Date.now();
@@ -70,6 +71,8 @@ function render() {
   renderer.render(scene, camera);
   lastTime = currentTime;
 
+  if (stats) stats.update();
+
   // Do a little recursing.
   requestAnimationFrame(render);
 }
@@ -93,6 +96,9 @@ function setupDebug() {
     scene.add(axis);
   }
 
+  stats = new Stats();
+  document.querySelector("#stats").append(stats.dom);
+
   controls.addEventListener('end', (e) => {
     const formatVector = v => {
       v.x = parseFloat(v.x.toFixed(2));
@@ -104,9 +110,9 @@ function setupDebug() {
     const cameraDir = formatVector(
     new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
     );
-    const posText = `Pos: (${cameraPos.x}, ${cameraPos.y}, ${cameraPos.z}) `;
-    const dirText = `Dir: (${cameraDir.x}, ${cameraDir.y}, ${cameraDir.z})`;
-    document.querySelector("#debugText").textContent = posText + dirText;
+    const posText = `Pos:(${cameraPos.x}, ${cameraPos.y}, ${cameraPos.z}) `;
+    const dirText = `Dir:(${cameraDir.x}, ${cameraDir.y}, ${cameraDir.z})`;
+    console.log('Camera - ', posText + dirText)
   });
 
   new p5(debugSketch); // debugSketch
