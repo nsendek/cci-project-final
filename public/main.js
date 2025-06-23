@@ -87,7 +87,6 @@ function setupDebug() {
   if (!config.debugMode) {
     return
   }
-  new p5(debugSketch); // debugSketch
 
   if (!config.hideAxes) {
     const axis = new THREE.AxesHelper(1000);
