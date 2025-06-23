@@ -144,19 +144,38 @@ function setupLights() {
 
 function setupEnviroment() {
   const room = new THREE.Group();
-  const geometry = new THREE.PlaneGeometry(ROOM_SIZE, ROOM_SIZE);
-
   scene.background = new THREE.Color(0x000000);
-  // scene.fog = new THREE.Fog( 0x888888, 10, 1500 );
 
-  // const mat4 = new THREE.MeshPhongMaterial({ color: 0x555555, emissive: 0x072534, side: THREE.DoubleSide, flatShading: true });
-  // const wall4 = new THREE.Mesh(geometry, mat4);
-  // wall4.position.y = -ROOM_SIZE / 2;
-  // wall4.rotation.x = Math.PI / 2;
-  // sceneWalls.push(wall4);
-  // room.add(wall4);
+  const nCells = 50;
+	var geometry = new THREE.PlaneGeometry(5*ROOM_SIZE, 5*ROOM_SIZE);
+  const material = new THREE.ShaderMaterial({
+    side: THREE.DoubleSide,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      precision mediump float;
+      varying vec2 vUv;
+      void main() {
+        float Size = ${nCells.toFixed(2)};
+        vec2 Pos = floor(vUv.xy * Size);
+        float PatternMask = mod(Pos.x + mod(Pos.y, 2.0), 2.0);
+        gl_FragColor = PatternMask * vec4(0.75, 0.75, 0.75, 1.0);
+      }
+    `,
+  });
 
-  scene.add(room);
+  const floor = new THREE.Mesh(geometry, material);
+  floor.position.y = -ROOM_SIZE / 10;
+  floor.rotation.x = Math.PI / 2;
+  sceneWalls.push(floor);
+  room.add(floor);
+
+  if (!config.hideFloor) scene.add(room);
 }
 
 function setupTree() {
