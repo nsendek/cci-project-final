@@ -14,11 +14,16 @@ export class EventBus {
 
   constructor() {
     this.events = {};
+    this.cache = {}; // stores last emitted value for new subscribers to receive.
   }
 
   on(event, handler) {
     if (!this.events[event]) this.events[event] = [];
     this.events[event].push(handler);
+
+    if (this.cache[event]) { // Immediately give subscriber last cached value.
+       handler(this.cache[event])
+    }
     return () => {
       this.events[event] = this.events[event].filter(h => h !== handler);
     }
@@ -27,6 +32,7 @@ export class EventBus {
   emit(event, payload) {
     if (!this.events[event]) return;
     this.events[event].forEach(handler => handler(payload));
+    this.cache[event] = payload;
   }
 }
 
