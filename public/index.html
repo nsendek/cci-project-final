@@ -20,7 +20,7 @@
       distinctPoseThreshold: 0.25,
       drawCenterPointInDebug: true,
       drawPoseBoundingBox: true,
-      flatShading: true,
+      // flatShading: true,
       // hideMesh: true,
       hideAxes: true,
       // positionLerpFactor: 0.35,
@@ -32,20 +32,21 @@
 
     const handConfig = {
       branchLengthScale: 0.55,
-      branchWidthScale: 0.55,
+      branchWidthScale: 0.25,
       poseBufferSize: 5,
       startingTrunkSize: 30,
-      videoUrl: '/videos/holding_hand.mov',
+      // videoUrl: '/videos/holding_hand.mov',
     };
 
     const bodyConfig = {
       alignAllPosesUp: true,
-      branchLengthScale: 0.50,
+      branchLengthScale: 0.40,
       branchWidthScale: 0.35,
-      poseBufferSize: 20,
+      poseBufferSize: 15,
       startingTrunkSize: 50,
 
-      videoUrl: "/videos/dan_3D_test.mov",
+      // videoUrl: "/videos/dan_3D_test.mov",
+      videoUrl: "/videos/triple_dan_3D_test.mov",
       // videoUrl: "/videos/dan_jumping-jack.mov",
       // videoUrl: "/videos/double_jumping_2.mov",
       // videoUrl: '/videos/people_walking.mp4',
@@ -76,7 +77,10 @@
       }
     }
   </script>
-  <div id="debugText"></div>
+  <div id="debug">
+    <div id="debugText"></div>
+    <div id="stats"></div>
+  </div>
   <main id="main">
   </main>
   <script src="./main.js" type="module" defer></script>

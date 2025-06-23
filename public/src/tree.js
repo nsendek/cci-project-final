@@ -96,14 +96,14 @@ export class PoseTree {
     skinPoseTree(this);
 
     // setTimeout(() => {
-    //   if (window.POSE_COUNT > 1000) {
+    //   if (window.POSE_COUNT > 400) {
     //     return;
     //   }
     //   // spawn another tree at the 3rd bone
     //   this.limbs.forEach(bones => {
-    //     spawnTreeAtBone(bones[2], 0);
+    //     spawnTreeAtBone(bones[1], randomPoseId());
     //   })
-    // }, 10000);
+    // }, 1000);
   }
 
   stepDownScales(poseTree) {
@@ -141,7 +141,7 @@ export class PoseTree {
         const worldOffset = new THREE.Vector3().subVectors(childWorldPosition, boneWorldPosition);
 
         // I can use worldOffset because we know scale is never changed across bones.
-        const magnitide = worldOffset.length(); 
+        const magnitide = worldOffset.length();
 
         const yAxis = worldOffset.clone().normalize(); // target up axis in world space.
 
@@ -150,7 +150,7 @@ export class PoseTree {
           prevX.add(new THREE.Vector3(0.1, 0.2, 0.3)).normalize();
           xAxis = prevX.clone().projectOnPlane(yAxis).normalize();
         }
-  
+
         const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
 
         // Building basis this way so that everything aligns and no twisting
@@ -165,7 +165,7 @@ export class PoseTree {
 
         // Rotate bone than translate child to the expected position along +Y
         bone.setTargetQuaternion(rotationQuat);
-  
+
         // Interpolate position so tree growth looks a bit smoother.
         childBone.setTargetPosition(
           new THREE.Vector3(0, magnitide * getModifiers()[ind] * this.branchLengthScale, 0)
@@ -199,6 +199,10 @@ export class PoseTree {
   getEnds() {
     return this.limbs.map(bones => bones[bones.length - 1]);
   }
+}
+
+export function randomPoseId() {
+  return Math.floor(Math.random() * config.maxPoses);
 }
 
 /**
@@ -263,6 +267,17 @@ export class SmartBone extends THREE.Bone {
  */
 export function spawnTreeAtBone(bone, poseId) {
   const newPt = new PoseTree(bone, poseId, true);
+  // const parent = bone.parent;
+  // if (parent instanceof SmartBone) {
+  //   const parentTree = bone.parentTree;
+  //   const parentWorldPos = parentTree.getWorldPosition(parent.boneId);
+  //   const boneWorldPose = parentTree.getWorldPosition(bone.boneId);
+
+  //   const magnitide = new THREE.Vector3().subVectors(boneWorldPose, parentWorldPos).length();
+
+  //   parent.add(newPt.getRoot());
+  //   newPt.getRoot().position.copy(new THREE.Vector3(0, magnitide * parentTree.branchLengthScale, 0))
+  // }
 }
 
 function skinPoseTree(poseTree) {

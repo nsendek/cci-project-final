@@ -30,8 +30,8 @@ export const BODYPOSE_LIMBS = [
 export const BODYPOSE_MODIFIERS = [
   1,
   1,
-  0.75,
-  0.75,
+  0.5,
+  0.5
 ];
 
 /**

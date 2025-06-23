@@ -1,7 +1,7 @@
 import { sketch as debugSketch } from "./src/debug.js"
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { PoseTree, SmartBone, getMemoizedSkinnedMesh } from './src/tree.js'
+import { PoseTree, SmartBone, randomPoseId } from './src/tree.js'
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import Stats from 'three/addons/libs/stats.module.js';
 
@@ -108,7 +108,7 @@ function setupDebug() {
     }
     const cameraPos = formatVector(camera.position.clone());
     const cameraDir = formatVector(
-    new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
+      new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
     );
     const posText = `Pos:(${cameraPos.x}, ${cameraPos.y}, ${cameraPos.z}) `;
     const dirText = `Dir:(${cameraDir.x}, ${cameraDir.y}, ${cameraDir.z})`;
@@ -166,7 +166,7 @@ function setupTree() {
   poseTree = new PoseTree(worldTreeRoot, 0, config.alignAllPosesUp);
 
   // Simple
-  recurseFill(poseTree, 2);
+  // recurseFill(poseTree, 2);
 }
 
 function recurseFill(parentTree, level = 1, maxLevel = level) {
@@ -179,24 +179,26 @@ function recurseFill(parentTree, level = 1, maxLevel = level) {
     poseCount++;
     const shouldAlignChildren = config.poseType == 'HAND';
     // const pt = new PoseTree(end, poseCount % config.maxPoses, shouldAlignChildren);
-    const pt = new PoseTree(end, 0, shouldAlignChildren);
+    const pt = new PoseTree(end, randomPoseId(), shouldAlignChildren);
 
     recurseFill(pt, level - 1, maxLevel);
   });
 
-  // const limbs = parentTree.getLimbs();
-  // limbs.forEach(bones => {
-  //   poseCount++;
-  //   const shouldAlignChildren = config.poseType == 'HAND';
+  //   const limbs = parentTree.getLimbs();
+  //   limbs.forEach(bones => {
+  //     poseCount++;
+  //     const shouldAlignChildren = config.poseType == 'HAND';
 
-  //   // random index not including the first.
-  //   const randIndex = Math.floor(1 + Math.random() * (bones.length - 1));
-  //   const bone = bones[randIndex];
-  //   const pt = new PoseTree(poseCount % config.maxPoses, shouldAlignChildren);
-  //   // const pt = new PoseTree(0, shouldAlignChildren);
+  //     // random index not including the first.
+  //     const randIndex = Math.floor(1 + Math.random() * (bones.length - 1));
+  //     const bone = bones[randIndex];
+  //     const poseId = poseCount % config.maxPoses;
+  //     console.log('poseId',poseId);
+  //     const pt = new PoseTree(poseId, shouldAlignChildren);
+  //     // const pt = new PoseTree(0, shouldAlignChildren);
 
-  //   pt.stepDownScales(parentTree);
-  //   bone.add(pt.getRoot());
+  //     pt.stepDownScales(parentTree);
+  //     bone.add(pt.getRoot());
 
   //     recurseFill(pt, level - 1, maxLevel);
   //   });
