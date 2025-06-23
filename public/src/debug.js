@@ -67,7 +67,7 @@ export const sketch = (p) => {
     averagePoses.forEach((pose, k) => {
       if (!pose) return;
       if (config.drawCenterPointInDebug) {
-        p.fill('black');
+        p.fill('white');
         p.circle(pose.center.x * p.width, pose.center.y * p.height, 15);
       }
       relevantIndices.forEach(i => {

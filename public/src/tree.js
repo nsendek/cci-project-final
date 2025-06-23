@@ -119,7 +119,7 @@ export class PoseTree {
   align() {
     this.getRoot().updateMatrixWorld(true);
     this.limbs.forEach((limb, ind) => {
-      let prevX = new THREE.Vector3(1, 0, 0);
+      const prevX = new THREE.Vector3(1, 0, 0);
       for (let i = 0; i < limb.length - 1; i++) {
         const bone = limb[i];
         const childBone = limb[i + 1];
@@ -131,7 +131,7 @@ export class PoseTree {
         const worldOffset = new THREE.Vector3().subVectors(childWorldPosition, boneWorldPosition);
 
         // I can use worldOffset because we know scale is never changed across bones.
-        const magnitide = worldOffset.length();
+        const magnitide = worldOffset.length(); 
 
         const yAxis = worldOffset.clone().normalize(); // target up axis in world space.
 
@@ -248,7 +248,7 @@ export class SmartBone extends THREE.Bone {
  * @param {number} poseId
  */
 export function spawnTreeAtBone(bone, poseId) {
-  const pt = new PoseTree(poseId);
+  const pt = new PoseTree(poseId, true);
   console.log('spawnTreeAtBone');
 
   const parentPt = bone.parentTree;
@@ -296,11 +296,11 @@ export function getMemoizedSkinnedMesh(scale) {
   const heightSegments = 10; // More segments = smoother skinning
 
   const geometry = new THREE.CylinderGeometry(
-    startSize * scale * config.branchWidthScale, 
+    startSize * scale * config.branchWidthScale,
     startSize * scale,
     totalLength,
-    10, 
-    heightSegments, 
+    10,
+    heightSegments,
     false
   );
   // Shift geometry so base is at y=0 (like the root bone)

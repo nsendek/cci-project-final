@@ -37,9 +37,7 @@ export class EventBus {
  */
 export function getQuaternionForAlignmentVector(vector) {
   const originalUp = new THREE.Vector3(0, 1, 0);
-  const newUp = vector.clone(); // new THREE.Vector3(vector.x, vector.y, vector.z); 
-  // Normalize the new up vector to ensure it's a unit vector
-  newUp.normalize();
+  const newUp = vector.clone().normalize();
 
   // Calculate the axis of rotation (cross product)
   const axis = new THREE.Vector3().crossVectors(originalUp, newUp).normalize();
@@ -48,9 +46,7 @@ export function getQuaternionForAlignmentVector(vector) {
   const angle = originalUp.angleTo(newUp);
 
   // Create the quaternion representing the rotation
-  const quaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-
-  return quaternion.invert(); // invert so you can use it to convert back to the space...
+  return new THREE.Quaternion().setFromAxisAngle(axis, angle).invert();
 }
 
 export function getPoseLimbs() {

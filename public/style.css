@@ -5,9 +5,10 @@ body {
   height: 100vh;
 }
 
-#tooltip {
+#debugText {
   position: absolute;
   font-size: 1em;
+  z-index: 1;
 }
 
 .p5Canvas {

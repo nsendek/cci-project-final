@@ -95,10 +95,33 @@ function setupDebug() {
     scene.add(axis);
   }
 
+  controls.addEventListener('end', (e) => {
+    const formatVector = v => {
+      v.x = parseFloat(v.x.toFixed(2));
+      v.y = parseFloat(v.y.toFixed(2));
+      v.z = parseFloat(v.z.toFixed(2));
+      return v;
+    }
+    const cameraPos = formatVector(camera.position.clone());
+    const cameraDir = formatVector(
+    new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
+    );
+    const posText = `Pos: (${cameraPos.x}, ${cameraPos.y}, ${cameraPos.z}) `;
+    const dirText = `Dir: (${cameraDir.x}, ${cameraDir.y}, ${cameraDir.z})`;
+    document.querySelector("#debugText").textContent = posText + dirText;
+  });
+
+  new p5(debugSketch); // debugSketch
+
   gui = new GUI();
   folder = gui.addFolder('Root Bone');
+
+  folder.add(worldTreeRoot.rotation, 'x', - Math.PI, Math.PI);
+  folder.add(worldTreeRoot.rotation, 'y', - Math.PI, Math.PI);
   folder.add(worldTreeRoot.rotation, 'z', - Math.PI, Math.PI);
-  folder.controllers[0].name('rotation.z');
+  folder.controllers[0].name('rotation.x');
+  folder.controllers[1].name('rotation.y');
+  folder.controllers[2].name('rotation.z');
 }
 
 function setupLights() {
