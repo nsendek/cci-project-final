@@ -12,6 +12,7 @@ app.use(express.static('public'));
 // Assets
 app.use('/videos', express.static(__dirname + '/videos'));
 app.use('/models', express.static(__dirname + '/models'));
+app.use('/data', express.static(__dirname + '/data'));
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
