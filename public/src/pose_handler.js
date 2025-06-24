@@ -10,7 +10,7 @@ import { EventBus } from './util.js';
 * @property {Vector3[]} landmarks - 2D coordinates to draw on a debug canvas
 * @property {Vector3[]} worldLandmarks - 3D coordinates to use in 3D environemnts.
 * @property {Vector3} alignmentVector - Average Alignment of all the 3D points from the pose root.
-* @property {Vector3} center - Center point of the pose in 2D landmark space (optional).
+* @property {Vector2} center - Center point of the pose in 2D landmark space (optional).
 * @property {Vector2[]} bbox - 2D Array of the bounding box of the pose in 2D landmark space.
 */
 
@@ -22,8 +22,6 @@ let lastVideoTime = -1;
 let landmarker;
 let count = 0;
 
-/** @type {Pose[]} */
-let currentPoses = [];
 
 /** @type {Pose[]} */
 let sumPoses = [];
@@ -107,7 +105,8 @@ function processResults(results) {
   if (!numPoses) {
     return;
   }
-  currentPoses = [];
+
+  let filteredPoses = []
   for (let i = 0; i < numPoses; i++) {
     const [
       worldLandmarks,
@@ -130,13 +129,27 @@ function processResults(results) {
       bbox
     };
 
-    if (!isDistinctPose(currentPoses, pose)) {
+    if (!isProminentPose(pose)) {
       continue;
     }
 
-    currentPoses.push(pose);
+    if (!isDistinctPose(filteredPoses, pose)) {
+      continue;
+    }
 
-    const index = currentPoses.length - 1;
+    filteredPoses.push(pose);
+    count++;
+  }
+
+  /// TODO either match index with 
+  const currentPoses = [];
+
+  // after filtering for distinct and prominent poses
+  // we match them to best match 
+  filteredPoses.forEach(pose => {
+    const index = Math.floor(pose.center.x * 10 / 3);
+    currentPoses[index] = pose;
+
     const buffer = getPoseBuffer(index);
     buffer.push(pose);
 
@@ -151,9 +164,7 @@ function processResults(results) {
     if (substractedPose) {
       subtractPose(sumPose, substractedPose);
     }
-
-    count++;
-  }
+  });
 
   EventBus.getInstance().emit('exactPoses', currentPoses);
   EventBus.getInstance().emit('poses', getAveragePoses());
@@ -162,22 +173,33 @@ function processResults(results) {
 /**
  * Returns false if the current pose's center X value is too close
  * to other accepted poses. Threshold is 0.25 of image width.
- * @param {Pose[]} currentPoses 
+ * @param {Pose[]} previousPoses 
  * @param {Pose} pose 
  * @returns {boolean}
  */
-function isDistinctPose(currentPoses, pose) {
-  if (!currentPoses.length) {
+function isDistinctPose(previousPoses, pose) {
+  if (!previousPoses.length) {
     return true;
   }
-  for (let i = 0; i < currentPoses.length; i++) {
-    const otherPose = currentPoses[i];
-    const xDiff = Math.abs(otherPose.center.x - pose.center.x);
+  let isDistinct = true;
+  previousPoses.forEach(currentPose => {
+    if (!currentPose) return;
+    const xDiff = Math.abs(currentPose.center.x - pose.center.x);
     if (xDiff <= config.distinctPoseThreshold) {
-      return false;
+      isDistinct = false;
     }
-  }
-  return true;
+  })
+  return isDistinct;
+}
+
+/**
+ * Returns true is pose bbox is large enough, relative 
+ * to the image frame, to warrant using.
+ * @param {Pose} pose 
+ */
+function isProminentPose(pose) {
+  const yRange = pose.bbox[1].y - pose.bbox[0].y;
+  return yRange > config.prominentPoseThreshold;
 }
 
 /**
@@ -316,12 +338,12 @@ function formatWorldLandmarks(worldLandmarks) {
  */
 function formatLandmarks(landmarks) {
   const vectors = []
-  const centerPoint = new Vector3(0, 0, 0);
+  const centerPoint = new Vector2(0, 0);
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  
+
   for (let i = 0; i < landmarks.length; i++) {
     const landmark = createVector3FromObject(landmarks[i]);
     vectors.push(landmark);
@@ -397,8 +419,8 @@ function getBlankPose(data) {
       ? createVector3FromObject(data.alignmentVector)
       : new Vector3(0, 0, 0),
     center: data
-      ? createVector3FromObject(data.center)
-      : new Vector3(0, 0, 0)
+      ? createVector2FromObject(data.center)
+      : new Vector2(0, 0)
   };
 }
 
