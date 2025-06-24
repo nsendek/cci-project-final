@@ -129,17 +129,26 @@ function setupDebug() {
 }
 
 function setupLights() {
-  sceneLights[0] = new THREE.DirectionalLight(0xffffff, 3);
-  sceneLights[1] = new THREE.DirectionalLight(0xffffff, 3);
-  sceneLights[2] = new THREE.DirectionalLight(0xffffff, 3);
+  sceneLights[0] = new THREE.DirectionalLight(0xffffff, 2);
+  sceneLights[1] = new THREE.DirectionalLight(0x6258a3, 3);
 
-  sceneLights[0].position.set(0, 750, 0);
-  sceneLights[1].position.set(375, 750, 375);
-  sceneLights[2].position.set(-375, -750, -375);
+  scene.add(new THREE.AmbientLight(0x3B3561, 3));
+
+  const addHelper = (light) => {
+    const helper = new THREE.DirectionalLightHelper(light, 50);
+    scene.add(helper);
+  }
+
+  sceneLights[0].position.set(750, 750, 0);
+  sceneLights[1].position.set(0, 750, 750);
 
   scene.add(sceneLights[0]);
   scene.add(sceneLights[1]);
-  scene.add(sceneLights[2]);
+
+  if (config.debugMode) {
+    addHelper(sceneLights[0]);
+    addHelper(sceneLights[1]);
+  }
 }
 
 function setupEnviroment() {
