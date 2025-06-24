@@ -1,5 +1,5 @@
 import { PoseLandmarker, FilesetResolver, HandLandmarker } from 'mediapipe';
-import { Vector3, Vector2} from 'three';
+import { Vector3, Vector2 } from 'three';
 import { EventBus } from './util.js';
 
 /**
@@ -38,8 +38,32 @@ export async function detectLandmarksForVideo(inputVideoEl) {
     await createLandmarker();
   }
 
+  await emitDefaultData();
+
   // Start detection loop.
   detectionLoop();
+}
+
+async function getPoseData(path) {
+  const response = await fetch(path);
+  const data = await response.json();
+  return data;
+}
+
+async function emitDefaultData() {
+  if (config.poseType != 'BODY') {
+    return;
+  }
+  const p1 = getBlankPose(await getPoseData('/data/pose1.json'));
+  const p2 = getBlankPose(await getPoseData('/data/pose2.json'));
+  const p3 = getBlankPose(await getPoseData('/data/pose3.json'));
+
+  poseBuffers = [[p1], [p2], [p3]];
+  addPose(getSumPose(0), p1);
+  addPose(getSumPose(1), p2);
+  addPose(getSumPose(2), p3);
+
+  EventBus.getInstance().emit('poses', getAveragePoses());
 }
 
 function detectionLoop() {
@@ -60,6 +84,9 @@ function detectionLoop() {
 }
 
 function detectLandmarks(callback) {
+  if (config.noDetection) {
+    return;
+  }
   if (config.poseType == 'HAND') {
     callback(landmarker.detectForVideo(video, performance.now()))
   } else {
@@ -77,7 +104,9 @@ function processResults(results) {
     return;
   }
   const numPoses = results.landmarks.length;
-
+  if (!numPoses) {
+    return;
+  }
   currentPoses = [];
   for (let i = 0; i < numPoses; i++) {
     const [
@@ -216,11 +245,22 @@ function subtractPose(poseA, poseB) {
 }
 
 /**
- * @param {{x:number; y:number; z:number;}}  point 
+ * @param {{x:number; y:number; z:number;} | undefined}  point 
  * @returns {Vector3}
  */
-function createVectorFromObject(point) {
+function createVector3FromObject(point) {
   return new Vector3(point.x, point.y, point.z);
+}
+
+/**
+ * @param {{x:number; y:number;} | undefined}  point 
+ * @returns {Vector2}
+ */
+function createVector2FromObject(point) {
+  if (!point) {
+    new Vector2(0, 0);
+  }
+  return new Vector2(point.x, point.y);
 }
 
 /**
@@ -243,14 +283,14 @@ function formatWorldLandmarks(worldLandmarks) {
     }
   }
 
-  const rootVector = createVectorFromObject(worldLandmarks[0]);
+  const rootVector = createVector3FromObject(worldLandmarks[0]);
   formatWorldLandmark(rootVector);
 
   const vectors = [rootVector]
   const alignmentVector = new Vector3(0, 0, 0);
 
   for (let i = 1; i < worldLandmarks.length; i++) {
-    const worldLandmark = createVectorFromObject(worldLandmarks[i]);
+    const worldLandmark = createVector3FromObject(worldLandmarks[i]);
     formatWorldLandmark(worldLandmark);
     vectors.push(worldLandmark);
 
@@ -283,7 +323,7 @@ function formatLandmarks(landmarks) {
   let maxY = -Infinity;
   
   for (let i = 0; i < landmarks.length; i++) {
-    const landmark = createVectorFromObject(landmarks[i]);
+    const landmark = createVector3FromObject(landmarks[i]);
     vectors.push(landmark);
     centerPoint.add(landmark);
 
@@ -301,8 +341,8 @@ function formatLandmarks(landmarks) {
 
   centerPoint.multiplyScalar(1.0 / landmarks.length);
   return [
-    vectors, 
-    centerPoint, 
+    vectors,
+    centerPoint,
     [new Vector2(minX, minY), new Vector2(maxX, maxY)]
   ];
 }
@@ -330,22 +370,35 @@ function getAveragePoses() {
 }
 
 /**
+ * @param {Object | undefined} data
  * @returns {Pose}
  */
-function getBlankPose() {
+function getBlankPose(data) {
   const landmarks = [];
   const worldLandmarks = [];
 
   for (let j = 0; j < POSE_SIZE; j++) {
-    landmarks.push(new Vector3(0, 0, 0));
-    worldLandmarks.push(new Vector3(0, 0, 0));
+    const landmark = data
+      ? createVector3FromObject(data.landmarks[j])
+      : new Vector3(0, 0, 0);
+
+    const worldLandmark = data
+      ? createVector3FromObject(data.worldLandmarks[j])
+      : new Vector3(0, 0, 0);
+
+    landmarks.push(landmark);
+    worldLandmarks.push(worldLandmark);
   }
 
   return {
     landmarks,
     worldLandmarks,
-    alignmentVector: new Vector3(0, 0, 0),
-    center: new Vector3(0, 0, 0)
+    alignmentVector: data
+      ? createVector3FromObject(data.alignmentVector)
+      : new Vector3(0, 0, 0),
+    center: data
+      ? createVector3FromObject(data.center)
+      : new Vector3(0, 0, 0)
   };
 }
 

@@ -123,13 +123,24 @@ export class PoseTree {
     if (!this.targetPose || this.lastUpdatedPose === this.targetPose) {
       return;
     }
-    this.align();
+
+    const currentTime = performance.now();
+    // const delta = config.updateTimeDelta / Math.min(this.branchLengthScale, this.branchWidthScale);
+    if ((currentTime - this.lastUpdateTime) > config.updateTimeDelta) {
+      this.align();
+      this.lastUpdateTime = currentTime;
+    }
   }
 
   align() {
     this.getRoot().updateMatrixWorld(true);
     this.limbs.forEach((limb, ind) => {
       const prevX = new THREE.Vector3(1, 0, 0);
+
+      // Since each bone is slerping its quat, we have to track 
+      // the expected location of each bone as we go.
+      const propogatingQuat = new THREE.Quaternion().identity();
+
       for (let i = 0; i < limb.length - 1; i++) {
         const bone = limb[i];
         const childBone = limb[i + 1];
@@ -158,12 +169,18 @@ export class PoseTree {
         const basisMatrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
         const rotationQuat = new THREE.Quaternion().setFromRotationMatrix(basisMatrix);
 
-        const parentWorldQuatInvert = new THREE.Quaternion();
-        bone.parent.getWorldQuaternion(parentWorldQuatInvert).invert();
+        // I'm CRACKED at Computer Graphics.
+        if (i == 0) {
+          const parentWorldQuat = new THREE.Quaternion();
+          bone.parent.getWorldQuaternion(parentWorldQuat);
+          propogatingQuat.multiply(parentWorldQuat);
+          rotationQuat.premultiply(parentWorldQuat.invert());
+          propogatingQuat.multiply(rotationQuat);
+        } else {
+          rotationQuat.premultiply(propogatingQuat.clone().invert());
+          propogatingQuat.multiply(rotationQuat); // Stack onto combined quat.
+        }
 
-        rotationQuat.premultiply(parentWorldQuatInvert);
-
-        // Rotate bone than translate child to the expected position along +Y
         bone.setTargetQuaternion(rotationQuat);
 
         // Interpolate position so tree growth looks a bit smoother.
@@ -177,11 +194,12 @@ export class PoseTree {
   }
 
   getWorldPosition(boneId) {
-    const alignQuat = this.shouldAlign
-      ? getQuaternionForAlignmentVector(this.targetPose.alignmentVector)
-      : new THREE.Quaternion();
     const worldPosition = this.targetPose.worldLandmarks[boneId].clone();
-    if (this.shouldAlign) worldPosition.applyQuaternion(alignQuat);
+    if (this.shouldAlign) {
+      worldPosition.applyQuaternion(
+        getQuaternionForAlignmentVector(this.targetPose.alignmentVector)
+      );
+    }
     worldPosition.multiplyScalar(this.getValueScalar());
     worldPosition.applyMatrix4(this.getRoot().matrixWorld);
 
