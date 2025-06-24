@@ -8,7 +8,7 @@ export const sketch = (p) => {
 
   let aspectRatio = 16 / 9;
   let relevantIndices = [];
-  let videoHeight = 240;
+  let videoHeight = 360;
 
   p.setup = () => {
     const canvas = p.createCanvas(videoHeight * aspectRatio, videoHeight);
@@ -65,7 +65,6 @@ export const sketch = (p) => {
   p.draw = () => {
     p.clear();    
     p.image(video, 0, 0, p.width, p.height);
-    p.filter(p.GRAY);
 
     averagePoses.forEach((pose, k) => {
       if (!pose) return;
