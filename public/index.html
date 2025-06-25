@@ -11,25 +11,39 @@
 
   <!-- Imported from the backend node server. -->
   <script src="/libs/p5"></script>
+  <script src="/libs/socket.io/socket.io.min.js"></script>
 
   <script>
     let config = {
       alignAllPosesUp: true,
       constantPoseSegmentSizes: false,
-      debugMode: true,
-      distinctPoseThreshold: 0.25,
+      // debugMode: true,
+      distinctPoseThreshold: 0.1,
+      // disableOrbitControls: true,
+      prominentPoseThreshold: 0.4,
       drawCenterPointInDebug: true,
       drawPoseBoundingBox: true,
-      // flatShading: true,
-      // hideMesh: true,
+      flatShading: true,
       hideAxes: true,
       // hideFloor: true,
-      // positionLerpFactor: 0.35,
-      // rotationLerpFactor: 0.35,
-      lerpFactor: 0.35,
+      // hideMesh: true,
+      hideSkeleton: true,
+      lerpFactor: 0.6,
       poseType: 'BODY',
       maxPoses: 3,
-      updateTimeDelta: 40,
+      maxLimbCount: 450,
+      disableRecordPoseData: true,
+      updateTimeDelta: 30,
+      saveTimeDelta: 1000, // 10 sec
+      // noDetection: true,
+      epoch: 10000, // 10sec
+      // epoch: 50000, // 50sec
+      // epoch: 100000, // 100sec
+      // epoch: 3.6e+5, // 1hr
+      // epoch: 1.8e+5, // 30min
+      // epoch: 7.2e+6, // 2hrs
+      // epoch: 1.26e+7, // 3.5hrs
+      // epoch: 1.44e+7, // 4 hrs
       cameraOrientation: {
         position: [11.09, 141.92, 922.32],
         direction: [0.02, 0.46, -0.89]
@@ -37,20 +51,23 @@
     };
 
     const handConfig = {
-      branchLengthScale: 0.55,
+      branchLengthScale: 0.75,
       branchWidthScale: 0.25,
       poseBufferSize: 5,
       startingTrunkSize: 30,
+      prominentPoseThreshold: 0.0, // Bound box broken?
       // videoUrl: '/videos/holding_hand.mov',
     };
 
     const bodyConfig = {
-      alignAllPosesUp: true,
-      branchLengthScale: 0.40,
-      branchWidthScale: 0.35,
-      poseBufferSize: 15,
+      branchLengthScale: 0.35,
+      branchWidthScale: 0.30,
+      lerpFactor: 0.5,
+      // branchLengthScale: 0.30,
+      // branchWidthScale: 0.40,
+      poseBufferSize: 3,
       startingTrunkSize: 50,
-
+      disableDefaultData: true,
       // videoUrl: "/videos/dan_3D_test.mov",
       videoUrl: "/videos/triple_dan_3D_test.mov",
       // videoUrl: "/videos/dan_jumping-jack.mov",
@@ -58,6 +75,11 @@
       // videoUrl: '/videos/people_walking.mp4',
       // videoUrl: '/videos/lobby_test.mov',
       // videoUrl: '/videos/lobby_test_2.mov',
+      // videoUrl: '/videos/lobby_test_night.mov',
+      //  videoUrl: '/videos/lobby_test_night_3.mov',
+      // videoUrl: '/videos/walking_into_frame_right.mov',
+      // videoUrl: '/videos/walking_into_frame_left.mov',
+      // videoUrl: '/videos/walking_across_frame.mov',
     };
 
     // Merge the correct followup sub config based on whether

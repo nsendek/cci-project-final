@@ -319,13 +319,12 @@ export class PoseTree extends Tree {
     skinPoseTree(this);
 
     setTimeout(() => {
-      if (window.POSE_COUNT > 300) {
+      if (window.POSE_COUNT > config.maxLimbCount) {
         return;
       }
       // spawn another tree at the 3rd bone
       this.limbs.forEach(bones => {
-        // spawnTreeAtBone(bones[1], 0);
-        spawnTreeAtBone(bones[1], randomPoseId());
+        spawnTreeAtBone(randomBoneIgnoringRoot(bones), randomPoseId());
       })
     }, config.epoch / 3);
   }
@@ -511,6 +510,10 @@ export class SmartBone extends THREE.Bone {
   }
 }
 window.SmartBone = SmartBone;
+
+function randomBoneIgnoringRoot(arr) {
+  return arr[Math.floor(Math.random() * arr.length - 1) + 1];
+}
 
 /**
  * 
