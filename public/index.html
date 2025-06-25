@@ -2,116 +2,111 @@
 <html lang="en">
 
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Body Tree</title>
+    <title>Body Tree</title>
 
-  <link rel="stylesheet" type="text/css" href="./style.css">
+    <link rel="stylesheet" type="text/css" href="./style.css">
 
-  <!-- Imported from the backend node server. -->
-  <script src="/libs/p5"></script>
-  <script src="/libs/socket.io/socket.io.min.js"></script>
+    <!-- Imported from the backend node server. -->
+    <script src="/libs/p5"></script>
+    <script src="/libs/socket.io/socket.io.min.js"></script>
 
-  <script>
-    let config = {
-      alignAllPosesUp: true,
-      constantPoseSegmentSizes: false,
-      // debugMode: true,
-      distinctPoseThreshold: 0.1,
-      // disableOrbitControls: true,
-      prominentPoseThreshold: 0.4,
-      drawCenterPointInDebug: true,
-      drawPoseBoundingBox: true,
-      flatShading: true,
-      hideAxes: true,
-      // hideFloor: true,
-      // hideMesh: true,
-      hideSkeleton: true,
-      lerpFactor: 0.6,
-      poseType: 'BODY',
-      maxPoses: 3,
-      maxLimbCount: 450,
-      disableRecordPoseData: true,
-      updateTimeDelta: 30,
-      saveTimeDelta: 1000, // 10 sec
-      // noDetection: true,
-      epoch: 10000, // 10sec
-      // epoch: 50000, // 50sec
-      // epoch: 100000, // 100sec
-      // epoch: 3.6e+5, // 1hr
-      // epoch: 1.8e+5, // 30min
-      // epoch: 7.2e+6, // 2hrs
-      // epoch: 1.26e+7, // 3.5hrs
-      // epoch: 1.44e+7, // 4 hrs
-      cameraOrientation: {
-        position: [11.09, 141.92, 922.32],
-        direction: [0.02, 0.46, -0.89]
-      }
-    };
+    <script>
+        let config = {
+            alignAllPosesUp: true,
+            constantPoseSegmentSizes: false,
+            // debugMode: true,
+            // disableOrbitControls: true,
+            distinctPoseThreshold: 0.1,
+            prominentPoseThreshold: 0.4,
+            drawCenterPointInDebug: true,
+            drawPoseBoundingBox: true,
+            flatShading: true,
+            hideAxes: true,
+            // hideFloor: true,
+            // hideMesh: true,
+            hideSkeleton: true,
+            lerpFactor: 0.6,
+            poseType: 'BODY',
+            maxPoses: 3,
+            maxLimbCount: 450,
+            disableRecordPoseData: true,
+            updateTimeDelta: 30,
+            saveTimeDelta: 1000, // 10 sec
+            // noDetection: true,
+            epoch: 10000, // 10sec
+            p5DotSize: 25,
+            // epoch: 50000, // 50sec
+            // epoch: 100000, // 100sec
+            // epoch: 3.6e+5, // 1hr
+            // epoch: 1.8e+5, // 30min
+            // epoch: 7.2e+6, // 2hrs
+            // epoch: 1.26e+7, // 3.5hrs
+            // epoch: 1.44e+7, // 4 hrs
+            cameraOrientation: {
+                position: [11.09, 141.92, 922.32],
+                direction: [0.02, 0.46, -0.89]
+            }
+        };
 
-    const handConfig = {
-      branchLengthScale: 0.75,
-      branchWidthScale: 0.25,
-      poseBufferSize: 5,
-      startingTrunkSize: 30,
-      prominentPoseThreshold: 0.0, // Bound box broken?
-      // videoUrl: '/videos/holding_hand.mov',
-    };
+        const handConfig = {
+            branchLengthScale: 0.75,
+            branchWidthScale: 0.25,
+            poseBufferSize: 5,
+            startingTrunkSize: 30,
+            prominentPoseThreshold: 0.0, // Bound box broken?
+            // videoUrl: '/videos/holding_hand.mov',
+        };
 
-    const bodyConfig = {
-      branchLengthScale: 0.35,
-      branchWidthScale: 0.30,
-      lerpFactor: 0.5,
-      // branchLengthScale: 0.30,
-      // branchWidthScale: 0.40,
-      poseBufferSize: 3,
-      startingTrunkSize: 50,
-      disableDefaultData: true,
-      // videoUrl: "/videos/dan_3D_test.mov",
-      videoUrl: "/videos/triple_dan_3D_test.mov",
-      // videoUrl: "/videos/dan_jumping-jack.mov",
-      // videoUrl: "/videos/double_jumping_2.mov",
-      // videoUrl: '/videos/people_walking.mp4',
-      // videoUrl: '/videos/lobby_test.mov',
-      // videoUrl: '/videos/lobby_test_2.mov',
-      // videoUrl: '/videos/lobby_test_night.mov',
-      //  videoUrl: '/videos/lobby_test_night_3.mov',
-      // videoUrl: '/videos/walking_into_frame_right.mov',
-      // videoUrl: '/videos/walking_into_frame_left.mov',
-      // videoUrl: '/videos/walking_across_frame.mov',
-    };
+        const bodyConfig = {
+            branchLengthScale: 0.35,
+            branchWidthScale: 0.30,
+            lerpFactor: 0.5,
+            // branchLengthScale: 0.30,
+            // branchWidthScale: 0.40,
+            poseBufferSize: 3,
+            startingTrunkSize: 50,
+            // disableDefaultData: true,
+            // videoUrl: "/videos/dan_3D_test.mov",
+            // videoUrl: "/videos/triple_dan_3D_test.mov",
+            // videoUrl: "/videos/dan_jumping-jack.mov",
+            // videoUrl: "/videos/double_jumping_2.mov",
+            // videoUrl: '/videos/people_walking.mp4',
+            // videoUrl: '/videos/lobby_test.mov',
+            // videoUrl: '/videos/lobby_test_2.mov',
+            // videoUrl: '/videos/lobby_test_night.mov',
+            //  videoUrl: '/videos/lobby_test_night_3.mov',
+            // videoUrl: '/videos/walking_into_frame_right.mov',
+            // videoUrl: '/videos/walking_into_frame_left.mov',
+            // videoUrl: '/videos/walking_across_frame.mov',
+        };
 
-    // Merge the correct followup sub config based on whether
-    // we're tracking hand or body
-    config = {
-      ...config,
-      ...(config.poseType == 'HAND' ? handConfig : bodyConfig)
-    };
+        // Merge the correct followup sub config based on whether
+        // we're tracking hand or body
+        config = {
+            ...config,
+            ...(config.poseType == 'HAND' ? handConfig : bodyConfig)
+        };
 
-    let scene; // Also treating global.
-  </script>
+        let scene; // Also treating global.
+    </script>
 </head>
 
 <body>
-  <!-- "/libs/mediapipe/tasks-vision/vision_bundle.mjs",  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js"-->
-  <!-- "/libs/three/build/three.module.js"  "https://unpkg.com/three@0.154.0/build/three.module.js" -->
-  <script type="importmap">
-    {
-      "imports": {
-        "mediapipe":  "/libs/mediapipe/tasks-vision/vision_bundle.mjs",
-        "three": "/libs/three/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.154.0/examples/jsm/"
-      }
-    }
-  </script>
-  <div id="debug">
-    <div id="debugText"></div>
-    <div id="stats"></div>
-  </div>
-  <main id="main">
-  </main>
-  <script src="./main.js" type="module" defer></script>
+    <!-- "/libs/mediapipe/tasks-vision/vision_bundle.mjs",  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js"-->
+    <!-- "/libs/three/build/three.module.js"  "https://unpkg.com/three@0.154.0/build/three.module.js" -->
+    <script type="importmap">
+        { "imports": { "mediapipe": "/libs/mediapipe/tasks-vision/vision_bundle.mjs", "three": "/libs/three/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.154.0/examples/jsm/" } }
+    </script>
+    <div id="debug">
+        <div id="debugText"></div>
+        <div id="stats"></div>
+    </div>
+    <main id="main">
+    </main>
+    <script src="./main.js" type="module" defer></script>
 </body>
 
 </html>
