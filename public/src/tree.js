@@ -57,7 +57,7 @@ export class WorldTree extends Tree {
     super();
     const bones = [new SmartBone()];
     for (let i = 1; i < this.boneCount; i++) {
-      const bone = new SmartBone();
+      const bone = new SmartBone(); // Bro do NOT pass WorldTree here TODO - fix it.
       bones[bones.length - 1].add(bone);
       bones.push(bone);
       bone.position.y = STARTING_SEGMENT_LENGTH;
@@ -416,7 +416,7 @@ export class SmartBone extends THREE.Bone {
   }
 
   /**
-   * @param {Tree|undefined} tree 
+   * @param {Tree} tree 
    * @param {number|undefined} boneId 
    */
   constructor(tree, boneId) {
@@ -476,7 +476,7 @@ export function spawnTreeAtBone(bone, poseId) {
 }
 
 function skinPoseTree(poseTree) {
-  if (config.debugMode && !config.hideAxes) {
+  if (config.debugMode && !config.hideSkeleton) {
     const skeletonHelper = new THREE.SkeletonHelper(poseTree.getRoot());
     scene.add(skeletonHelper);
   }
