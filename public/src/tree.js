@@ -32,6 +32,9 @@ const STARTING_SEGMENT_LENGTH = 1;
 
 
 class Tree {
+  branchWidthScale = 1;
+  branchLengthScale = 1;
+
   getRoot() {
     throw new Error('getRoot() must be implemented by subclass');
   }
@@ -59,6 +62,7 @@ export class WorldTree extends Tree {
     for (let i = 1; i < this.boneCount; i++) {
       const bone = new SmartBone(); // Bro do NOT pass WorldTree here TODO - fix it.
       bones[bones.length - 1].add(bone);
+      bones[bones.length - 1].addSmartChild(bone);
       bones.push(bone);
       bone.position.y = STARTING_SEGMENT_LENGTH;
     }
@@ -91,11 +95,12 @@ export class WorldTree extends Tree {
       this.pose = getAveragePose(poses);
     });
 
-    if (config.hideSkeleton) {
-      return;
+    if (!config.hideSkeleton) {
+      const helper = new THREE.SkeletonHelper(this.bones[0])
+      scene.add(helper);
     }
-    const helper = new THREE.SkeletonHelper(this.bones[0])
-    scene.add(helper);
+
+    this.lastSaveTime = 10000; // wait about 10 sec after page start to start saving.
   }
 
   alignTrees() {
@@ -108,6 +113,7 @@ export class WorldTree extends Tree {
 
   update() {
     if (this.pose) this.align();
+    this.maybeSaveTreeData();
 
     // 0 < t < 1
     const t = Math.min(performance.now(), config.epoch) / config.epoch;
@@ -115,6 +121,46 @@ export class WorldTree extends Tree {
       return;
     }
     this.growTrunk(t);
+  }
+
+  maybeSaveTreeData() {
+    const timeNow = performance.now();
+    if (timeNow - this.lastSaveTime > config.saveTimeDelta) {
+
+      this.lastSaveTime = timeNow;
+      this.recordAndEmitTreeTimestamp();
+    }
+  }
+
+  async recordAndEmitTreeTimestamp() {
+    const socket = window.socket;
+    if (!socket) {
+      return;
+    }
+    const timestamp = Date.now();
+
+    const data = {
+      timestamp,
+      bones: []
+    }
+
+    SmartBone.getInstances().forEach((bone) => {
+      bone.updateMatrixWorld();
+      const pos = new THREE.Vector3();
+      bone.getWorldPosition(pos);
+
+      data.bones.push({
+        id: bone.id,
+        position: { x: pos.x, y: pos.y, z: pos.z },
+        parent: bone.nearestSmartBoneParent ? bone.nearestSmartBoneParent.id : null
+      })
+    });
+
+    if (!config.disableRecordPoseData) {
+      try {
+        socket.emit('recordPoseData', data);
+      } catch (e) {}
+    }
   }
 
   /**
@@ -146,10 +192,10 @@ export class WorldTree extends Tree {
       bone.updateMatrixWorld();
 
       const leftLegBoneWorldPosition = this.getWorldPosition(leftLeg[i]);
-      const leftLegchildWorldPosition = this.getWorldPosition(leftLeg[i+1]);
+      const leftLegchildWorldPosition = this.getWorldPosition(leftLeg[i + 1]);
 
       const rightLegBoneWorldPosition = this.getWorldPosition(rightLeg[i]);
-      const rightLegchildWorldPosition = this.getWorldPosition(rightLeg[i+1]);
+      const rightLegchildWorldPosition = this.getWorldPosition(rightLeg[i + 1]);
 
       const leftWorldOffset = new THREE.Vector3().subVectors(leftLegchildWorldPosition, leftLegBoneWorldPosition);
       const rightWorldOffset = new THREE.Vector3().subVectors(rightLegchildWorldPosition, rightLegBoneWorldPosition);
@@ -215,9 +261,6 @@ export class PoseTree extends Tree {
   limbs = [];
   targetPose = null;
 
-  branchWidthScale = 1;
-  branchLengthScale = 1;
-
   lastUpdateTime = -1;
 
   /**
@@ -237,6 +280,9 @@ export class PoseTree extends Tree {
       this.root.add(chainRoot);
       const boneChain = [chainRoot];
 
+      if (parent instanceof SmartBone) {
+        parent.addSmartChild(chainRoot);
+      }
       for (let i = 1; i < limb.length; i++) {
         const childId = limb[i];
 
@@ -244,6 +290,7 @@ export class PoseTree extends Tree {
         bone.position.y = STARTING_SEGMENT_LENGTH;
 
         boneChain[i - 1].add(bone);
+        boneChain[i - 1].addSmartChild(bone);
         boneChain.push(bone);
       }
 
@@ -395,6 +442,7 @@ export class PoseTree extends Tree {
     return this.limbs.map(bones => bones[bones.length - 1]);
   }
 }
+window.PoseTree = PoseTree;
 
 export function randomPoseId() {
   return Math.floor(Math.random() * config.maxPoses);
@@ -409,6 +457,7 @@ export class SmartBone extends THREE.Bone {
   // Static property to track instances
   static instances = [];
 
+  nearestSmartBoneParent = null;
   boneId = 0;
 
   static getInstances() {
@@ -430,6 +479,13 @@ export class SmartBone extends THREE.Bone {
       axis.setColors(0xff0000, 0x00ff00, 0x0000ff); // RGB
       this.add(axis);
     }
+  }
+
+  /**
+   * @param {SmartBone} child 
+   */
+  addSmartChild(child) {
+    child.nearestSmartBoneParent = this;
   }
 
   setTargetPosition(position) {
@@ -454,6 +510,7 @@ export class SmartBone extends THREE.Bone {
     return updateDone;
   }
 }
+window.SmartBone = SmartBone;
 
 /**
  * 

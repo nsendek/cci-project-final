@@ -5,11 +5,12 @@ import { PoseTree, SmartBone, randomPoseId, WorldTree } from './src/tree.js'
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import Stats from 'three/addons/libs/stats.module.js';
 
-let camera, renderer, controls, gui, stats;
-
+let camera, renderer, controls, gui, stats, socket;
 
 const sceneLights = [];
 const sceneWalls = [];
+
+const SOCKET_URL = window.location.host;
 const ROOM_SIZE = 2500;
 
 /** @type {WorldTree} */
@@ -21,6 +22,9 @@ window.POSE_COUNT = 0;
 main();
 
 function main() {
+  if (!config.disableRecordPoseData) {
+    console.log("RECORDING DATA")
+  }
   if (config.debugMode) {
     window.THREE = THREE; // so i can test stuff out in console.
   }
@@ -47,6 +51,7 @@ function init() {
   setupTree();
   setupDebug();
   setupP5();
+  setupSocket();
 }
 
 function render() {
@@ -73,6 +78,13 @@ function render() {
 
   // Do a little recursing.
   requestAnimationFrame(render);
+}
+
+function setupSocket() {
+  socket = io.connect(SOCKET_URL);
+  socket.on('connect', () => {
+    window.socket = socket;
+  });
 }
 
 function setupCamera() {

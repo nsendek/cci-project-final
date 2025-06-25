@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "nodemon app.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js"
   },
   "dependencies": {
     "@mediapipe/hands": "^0.4.1646424915",
@@ -15,5 +16,10 @@
     "p5": "^2.0.3",
     "socket.io": "4.5.3",
     "three": "^0.177.0"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "records"
+    ]
   }
 }
