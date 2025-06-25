@@ -147,7 +147,7 @@ function processResults(results) {
   // after filtering for distinct and prominent poses
   // we match them to best match 
   filteredPoses.forEach(pose => {
-    const index = Math.floor(pose.center.x * 10 / 3);
+    const index = Math.floor(pose.center.x * 10 / 3.1);
     currentPoses[index] = pose;
 
     const buffer = getPoseBuffer(index);
