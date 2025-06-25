@@ -1,12 +1,13 @@
 import { detectLandmarksForVideo } from './pose_handler.js';
 import { EventBus, getPoseLimbs } from './util.js';
 
-export const debugSketch = (p) => {
-  let video;
-  let poses = [];
-  let averagePoses = [];
+let video;
+let poses = [];
+let averagePoses = [];
+let aspectRatio = 16 / 9;
+let paused = false;
 
-  let aspectRatio = 16 / 9;
+export const debugSketch = (p) => {
   let relevantIndices = [];
   let videoHeight = 360;
 
@@ -16,9 +17,9 @@ export const debugSketch = (p) => {
       console.log(poses);
     });
     if (config.videoUrl) {
-      useVideoFile();
+      useVideoFile(p);
     } else {
-      useWebcam();
+      useWebcam(p);
     }
 
     const limbs = getPoseLimbs();
@@ -31,40 +32,8 @@ export const debugSketch = (p) => {
     });
   }
 
-  function useWebcam() {
-    video = p.createCapture(p.VIDEO);
-    video.size(640, 480);
-    video.hide();
-
-    video.elt.addEventListener("loadeddata", startDetecting);
-  }
-
-  function useVideoFile() {
-    video = p.createVideo(config.videoUrl, playVideo);
-    video.elt.addEventListener("loadeddata", startDetecting);
-  }
-
-  function playVideo() {
-    video.volume(0); // Can't autoplay unless video's muted?
-    video.loop();
-    video.hide();
-  }
-
-  function startDetecting() {
-    detectLandmarksForVideo(video.elt);
-
-    EventBus.getInstance().on('poses', (response) => {
-      averagePoses = response;
-    });
-
-    EventBus.getInstance().on('exactPoses', (response) => {
-      poses = response;
-      // console.log(poses)
-    });
-  }
-
   p.draw = () => {
-    p.clear();    
+    p.clear();
     p.image(video, 0, 0, p.width, p.height);
 
     averagePoses.forEach((pose, k) => {
@@ -72,13 +41,13 @@ export const debugSketch = (p) => {
       if (!pose) return;
       p.push();
       if (config.drawCenterPointInDebug) {
-        setFillOrStroke(k);
+        setFillOrStroke(p, k);
         triangle(pose.center.x * p.width, pose.center.y * p.height, 10);
       }
       relevantIndices.forEach(i => {
         let point = pose.landmarks[i];
         if (!point) return;
-        setFillOrStroke(k);
+        setFillOrStroke(p, k);
         p.circle(point.x * p.width, point.y * p.height, 5);
       })
       p.pop();
@@ -98,7 +67,7 @@ export const debugSketch = (p) => {
         const yDiff = max.y - min.y;
         p.rect(min.x * p.width, min.y * p.height, xDiff * p.width, yDiff * p.height)
       }
-      setFillOrStroke(k, true);
+      setFillOrStroke(p, k, true);
       relevantIndices.forEach(i => {
         let point = pose.landmarks[i];
         if (!point) return;
@@ -124,36 +93,155 @@ export const debugSketch = (p) => {
     p.pop();
   }
 
-  function setFillOrStroke(poseId, isStroke) {
-    const colorFn = (...args) => {
-      if (isStroke) {
-        p.stroke(...args);
-        p.noFill();
-      } else {
-        p.fill(...args);
-        p.noStroke();
-      }
-    };
-    switch (poseId) {
-      case 0:
-        colorFn(255, 0, 0);
-        break;
-      case 1:
-        colorFn(0, 255, 0);
-        break;
-      case 2:
-        colorFn(0, 0, 255);
-        break;
-      default:
-    }
-  }
-
-  let paused = false;
   p.keyPressed = () => {
     if (p.keyCode == 32) {
       if (paused) video.play();
       else video.pause();
       paused = !paused;
     }
+  }
+}
+
+export const prodSketch = (p) => {
+  let relevantIndices = [];
+  const MIRROR_BODY = true;
+  let thirdWidth;
+  let halfThirWidth;
+
+  p.setup = () => {
+    p.createCanvas(p.windowWidth, p.windowWidth / aspectRatio);
+    thirdWidth = p.width / 3;
+    halfThirWidth = thirdWidth / 2;
+    if (config.videoUrl) {
+      useVideoFile(p);
+    } else {
+      useWebcam(p);
+    }
+
+    const limbs = getPoseLimbs();
+    limbs.forEach(bones => {
+      bones.forEach(poseIndex => {
+        if (!limbs.includes(poseIndex)) {
+          relevantIndices.push(poseIndex);
+        }
+      });
+    });
+  }
+
+  p.draw = () => {
+    p.clear();
+
+    averagePoses.forEach((pose, k) => {
+      if (!pose || k >= config.maxPoses) {
+        return;
+      }
+
+      const centerX = (2 - k) * thirdWidth + halfThirWidth;
+      const centerY = pose.center.y * p.height;
+
+      p.push();
+      p.translate(centerX, centerY);
+      setFillOrStroke(p, k);
+
+      relevantIndices.forEach(i => {
+        const point = pose.landmarks[i];
+        if (!point) return;
+
+        const x = MIRROR_BODY ? -1 * (point.x - pose.center.x) : point.x - pose.center.x;
+        const y = point.y - pose.center.y;
+
+        p.push();
+        p.circle(x * p.width, y * p.height, 5);
+        p.pop();
+      })
+      p.pop();
+    });
+
+    poses.forEach((pose, k) => {
+      if (!pose || !pose.landmarks || k >= config.maxPoses) {
+        return;
+      }
+
+      const centerX = (2 - k) * thirdWidth + halfThirWidth;
+      const centerY = pose.center.y * p.height;
+
+      p.push();
+      p.translate(centerX, centerY);
+      setFillOrStroke(p, k, true);
+
+      relevantIndices.forEach(i => {
+        const point = pose.landmarks[i];
+        if (!point) return;
+        const x = MIRROR_BODY ? -1 * (point.x - pose.center.x) : point.x - pose.center.x;
+        const y = point.y - pose.center.y;
+
+        p.push();
+        p.circle(x * p.width, y * p.height, 10);
+        p.pop();
+      });
+      p.pop();
+    });
+  }
+
+  p.keyPressed = () => {
+    if (p.keyCode == 32) {
+      if (paused) video.play();
+      else video.pause();
+      paused = !paused;
+    }
+  }
+}
+
+function useWebcam(p) {
+  video = p.createCapture(p.VIDEO);
+  video.size(480 * aspectRatio, 480);
+  video.hide();
+
+  video.elt.addEventListener("loadeddata", startDetecting);
+}
+
+function useVideoFile(p) {
+  video = p.createVideo(config.videoUrl, playVideo);
+  video.elt.addEventListener("loadeddata", startDetecting);
+}
+
+function playVideo() {
+  video.volume(0); // Can't autoplay unless video's muted?
+  video.loop();
+  video.hide();
+}
+
+function startDetecting() {
+  detectLandmarksForVideo(video.elt);
+  EventBus.getInstance().on('poses', (response) => {
+    averagePoses = response;
+  });
+
+  EventBus.getInstance().on('exactPoses', (response) => {
+    poses = response;
+  });
+}
+
+function setFillOrStroke(p, poseId, isStroke) {
+  const colorFn = (...args) => {
+    if (isStroke) {
+      p.stroke(...args);
+      p.noFill();
+    } else {
+      p.fill(...args);
+      p.noStroke();
+    }
+  };
+  switch (poseId) {
+    case 0:
+      colorFn(255, 0, 0);
+      break;
+    case 1:
+      colorFn(0, 255, 0);
+      break;
+    case 2:
+      colorFn(0, 0, 255);
+      break;
+    default:
   }
 }

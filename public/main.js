@@ -1,4 +1,4 @@
-import { debugSketch } from "./src/p5.js"
+import { debugSketch , prodSketch} from "./src/p5.js"
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PoseTree, SmartBone, randomPoseId } from './src/tree.js'
@@ -44,7 +44,7 @@ function init() {
   setupLights();
   setupTree();
   setupDebug();
-  setupProd();
+  setupP5();
 }
 
 function render() {
@@ -87,14 +87,16 @@ function setupCamera() {
   }
 }
 
-function setupProd() {
+function setupP5() {
   if (config.debugMode) {
-    return;
+    new p5(debugSketch)
+  } else {
+    new p5(prodSketch)
   }
 }
 
 function setupDebug() {
-  if (!config.disableOrbitControls) {
+  if (!config.disableOrbitControls && config.debugMode) {
     controls = new OrbitControls(camera, renderer.domElement);
   }
 
@@ -128,8 +130,6 @@ function setupDebug() {
       console.log('Camera - ', posText + dirText)
     });
   }
-
-  new p5(debugSketch); // debugSketch
 
   gui = new GUI();
   folder = gui.addFolder('Root Bone');
