@@ -1,18 +1,20 @@
 import { debugSketch , prodSketch} from "./src/p5.js"
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { PoseTree, SmartBone, randomPoseId } from './src/tree.js'
+import { PoseTree, SmartBone, randomPoseId, WorldTree } from './src/tree.js'
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import Stats from 'three/addons/libs/stats.module.js';
 
-let camera, renderer, controls, poseTree, worldTreeRoot, gui, folder, stats;
+let camera, renderer, controls, gui, stats;
 
 
 const sceneLights = [];
 const sceneWalls = [];
 const ROOM_SIZE = 2500;
 
-let count = 0;
+/** @type {WorldTree} */
+let worldTree;
+
 let poseCount = 0;
 window.POSE_COUNT = 0;
 
@@ -52,6 +54,8 @@ function render() {
   if (controls) {
     controls.update();
   }
+
+  worldTree.update();
 
   PoseTree.getInstances().forEach(instance => {
     instance.update();
@@ -132,14 +136,30 @@ function setupDebug() {
   }
 
   gui = new GUI();
-  folder = gui.addFolder('Root Bone');
 
-  folder.add(worldTreeRoot.rotation, 'x', - Math.PI, Math.PI);
-  folder.add(worldTreeRoot.rotation, 'y', - Math.PI, Math.PI);
-  folder.add(worldTreeRoot.rotation, 'z', - Math.PI, Math.PI);
-  folder.controllers[0].name('rotation.x');
-  folder.controllers[1].name('rotation.y');
-  folder.controllers[2].name('rotation.z');
+  worldTree.trees.forEach((tree, i) => {
+    const folder = gui.addFolder(`Tree ${i}`);
+    const treeRoot = tree.getRoot();
+
+    folder.add(treeRoot.rotation, 'x', - Math.PI, Math.PI);
+    folder.add(treeRoot.rotation, 'y', - Math.PI, Math.PI);
+    folder.add(treeRoot.rotation, 'z', - Math.PI, Math.PI);
+    folder.controllers[0].name('rotation.x');
+    folder.controllers[1].name('rotation.y');
+    folder.controllers[2].name('rotation.z');
+  });
+
+  if (worldTree) {
+    worldTree.bones.forEach((bone, i) => {
+      const folder = gui.addFolder(`World Tree Bone ${i}`);
+      folder.add(bone.rotation, 'x', - Math.PI / 2, Math.PI / 2);
+      folder.add(bone.rotation, 'y', - Math.PI / 2, Math.PI / 2);
+      folder.add(bone.rotation, 'z', - Math.PI / 2, Math.PI / 2);
+      folder.controllers[0].name('rotation.x');
+      folder.controllers[1].name('rotation.y');
+      folder.controllers[2].name('rotation.z');
+    })
+  }
 }
 
 function setupLights() {
@@ -203,13 +223,10 @@ function setupEnviroment() {
 }
 
 function setupTree() {
-  worldTreeRoot = new THREE.Group();
-  scene.add(worldTreeRoot);
-
-  poseTree = new PoseTree(worldTreeRoot, 0, config.alignAllPosesUp);
-
-  // Simple
-  // recurseFill(poseTree, 2);
+  worldTree = new WorldTree();
+  window.worldTree = worldTree;
+  scene.add(worldTree.bones[0]);
+  scene.add(worldTree.mesh);
 }
 
 function recurseFill(parentTree, level = 1, maxLevel = level) {

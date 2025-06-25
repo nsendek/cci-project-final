@@ -8,6 +8,7 @@ export class EventBus {
   static getInstance() {
     if (!EventBus.instance) {
       EventBus.instance = new EventBus();
+      window.EventBus = EventBus.instance;
     }
     return EventBus.instance;
   }

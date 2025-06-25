@@ -5,6 +5,7 @@ import {
   getPoseLimbs,
   getModifiers
 } from "./util.js";
+import { getAveragePose } from './pose_handler.js'
 
 /**
  * Store skinned mesh for whatever scale we're working with so that we don't duplicate work.
@@ -12,25 +13,197 @@ import {
 const SKINNED_MESH_MEMO = {};
 window.SKINNED_MESH_MEMO = SKINNED_MESH_MEMO;
 
-const POSE_TREE_MATERIAL = new THREE.MeshPhongMaterial({
+// const POSE_TREE_MATERIAL = new THREE.MeshPhongMaterial({
+//   color: 0xed0786,
+//   emissive: 0x000000,
+//   emissiveIntensity: 0.05,
+//   side: THREE.DoubleSide,
+//   flatShading: config.flatShading,
+// });
+
+const POSE_TREE_MATERIAL = new THREE.MeshStandardMaterial({
   color: 0xed0786,
-  // color: 0xf4ffa3,
-  emissive: 0x000000,
-  emissiveIntensity: 0.05,
   side: THREE.DoubleSide,
   flatShading: config.flatShading,
-  // transparent: true,
-  // opacity: 0.5,
-  // shininess: 10
+  skinning: true
 });
 
 const STARTING_SEGMENT_LENGTH = 1;
+
+
+class Tree {
+  getRoot() {
+    throw new Error('getRoot() must be implemented by subclass');
+  }
+
+  align() {
+    throw new Error('align() must be implemented by subclass');
+  }
+
+  update() {
+    throw new Error('update() must be implemented by subclass');
+  }
+}
+
+export class WorldTree extends Tree {
+  startingTreeSegmentHeight = 100; // maybe 300?
+  finalTreeSegmentHeight = 500;
+
+  boneCount = config.poseType === 'HAND' ? 5 : 4;
+
+  trees = [];
+
+  constructor() {
+    super();
+    const bones = [new SmartBone()];
+    for (let i = 1; i < this.boneCount; i++) {
+      const bone = new SmartBone();
+      bones[bones.length - 1].add(bone);
+      bones.push(bone);
+      bone.position.y = STARTING_SEGMENT_LENGTH;
+    }
+
+    const skeleton = new THREE.Skeleton(bones);
+    const rootBone = bones[0];
+    const mesh = getMemoizedSkinnedMesh(0.75 / config.branchWidthScale);
+    mesh.add(rootBone);
+    mesh.bind(skeleton);
+
+    // After binding move bones into place
+    for (let i = 1; i < this.boneCount; i++) {
+      bones[i].position.y = 400;
+    }
+
+    this.bones = bones;
+    this.mesh = mesh;
+
+    // Detected poses are ordered left to right basically. 
+    // Put center most pose at top of tree?
+    this.trees[1] = new PoseTree(this.bones[3], 1, config.alignAllPosesUp);
+
+    // put edge poses on left and right of tree
+    this.trees[0] = new PoseTree(this.bones[2], 0, config.alignAllPosesUp);
+    this.trees[2] = new PoseTree(this.bones[1], 2, config.alignAllPosesUp);
+
+    this.alignTrees();
+
+    EventBus.getInstance().on('poses', (poses) => {
+      this.pose = getAveragePose(poses);
+    });
+
+    if (config.hideSkeleton) {
+      return;
+    }
+    const helper = new THREE.SkeletonHelper(this.bones[0])
+    scene.add(helper);
+  }
+
+  alignTrees() {
+    const leftSideTree = this.trees[0]; // Angle it towards left.
+    const rightSideTree = this.trees[2]; // Angle it towards right.
+
+    alignPoseTreeToVector(leftSideTree, new THREE.Vector3(-1, 3, 1), new THREE.Vector3(0, 0, 1))
+    alignPoseTreeToVector(rightSideTree, new THREE.Vector3(1, 3, 1), new THREE.Vector3(0, 0, -1))
+  }
+
+  update() {
+    if (this.pose) this.align();
+
+    // 0 < t < 1
+    const t = Math.min(performance.now(), config.epoch) / config.epoch;
+    if (t == 1) {
+      return;
+    }
+    this.growTrunk(t);
+  }
+
+  /**
+   * Updates the height of the tree so it grows.
+   * @param {number} t 
+   */
+  growTrunk(t) {
+    const segmentHeightDelta = (this.finalTreeSegmentHeight - this.startingTreeSegmentHeight) * t;
+    for (let i = 1; i < this.boneCount; i++) {
+      this.bones[i].position.y = this.startingTreeSegmentHeight + segmentHeightDelta;
+    }
+  }
+
+  /**
+   * @param {number} t 
+   */
+  align(t) {
+    const leftLeg = getPoseLimbs()[3];
+    const rightLeg = getPoseLimbs()[3];
+
+    const prevX = new THREE.Vector3(1, 0, 0);
+    // Since each bone is slerping its quat, we have to track 
+    // the expected location of each bone as we go.
+    const propogatingQuat = new THREE.Quaternion().identity();
+
+    for (let i = 0; i < leftLeg.length - 1; i++) {
+      const bone = this.bones[i];
+
+      bone.updateMatrixWorld();
+
+      const leftLegBoneWorldPosition = this.getWorldPosition(leftLeg[i]);
+      const leftLegchildWorldPosition = this.getWorldPosition(leftLeg[i+1]);
+
+      const rightLegBoneWorldPosition = this.getWorldPosition(rightLeg[i]);
+      const rightLegchildWorldPosition = this.getWorldPosition(rightLeg[i+1]);
+
+      const leftWorldOffset = new THREE.Vector3().subVectors(leftLegchildWorldPosition, leftLegBoneWorldPosition);
+      const rightWorldOffset = new THREE.Vector3().subVectors(rightLegchildWorldPosition, rightLegBoneWorldPosition);
+
+      const averageOffset = new THREE.Vector3().addVectors(leftWorldOffset, rightWorldOffset).multiplyScalar(0.5);
+      const yAxis = averageOffset.clone().normalize(); // target up axis in world space.
+
+      let xAxis = prevX.clone().projectOnPlane(yAxis).normalize();
+      if (xAxis.lengthSq() < 1e-6) {
+        prevX.add(new THREE.Vector3(0.1, 0.2, 0.3)).normalize();
+        xAxis = prevX.clone().projectOnPlane(yAxis).normalize();
+      }
+
+      const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+
+      // Building basis this way so that everything aligns and no twisting
+      // orientation across bones
+      const basisMatrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+      const rotationQuat = new THREE.Quaternion().setFromRotationMatrix(basisMatrix);
+
+      if (i == 0) {
+        const parentWorldQuat = new THREE.Quaternion();
+        bone.parent.getWorldQuaternion(parentWorldQuat);
+        propogatingQuat.multiply(parentWorldQuat);
+        rotationQuat.premultiply(parentWorldQuat.invert());
+        propogatingQuat.multiply(rotationQuat);
+      } else {
+        rotationQuat.premultiply(propogatingQuat.clone().invert());
+        propogatingQuat.multiply(rotationQuat); // Stack onto combined quat.
+      }
+
+      bone.setTargetQuaternion(rotationQuat);
+
+      prevX.copy(xAxis);
+    }
+  }
+
+  getWorldPosition(boneId) {
+    if (!this.pose) {
+      return;
+    }
+    const worldPosition = this.pose.worldLandmarks[boneId].clone();
+    worldPosition.applyQuaternion(
+      getQuaternionForAlignmentVector(this.pose.alignmentVector)
+    );
+    return worldPosition;
+  }
+}
 
 /**
  * Class that merges a ThreeJS Bone + Skeleton objects with ML5's pose detector
  * data and gravitates towards them.
  */
-export class PoseTree {
+export class PoseTree extends Tree {
   // Static property to track instances
   static instances = [];
 
@@ -45,6 +218,8 @@ export class PoseTree {
   branchWidthScale = 1;
   branchLengthScale = 1;
 
+  lastUpdateTime = -1;
+
   /**
    * @param {THREE.Object3D} [parent] 
    * @param {number} [poseId=0] 
@@ -52,6 +227,7 @@ export class PoseTree {
    *  we will align the points along the local up axis (+Y).
    */
   constructor(parent, poseId = 0, shouldAlign = false) {
+    super();
     this.poseId = poseId;
     this.shouldAlign = shouldAlign;
 
@@ -95,15 +271,16 @@ export class PoseTree {
 
     skinPoseTree(this);
 
-    // setTimeout(() => {
-    //   if (window.POSE_COUNT > 400) {
-    //     return;
-    //   }
-    //   // spawn another tree at the 3rd bone
-    //   this.limbs.forEach(bones => {
-    //     spawnTreeAtBone(bones[1], randomPoseId());
-    //   })
-    // }, 1000);
+    setTimeout(() => {
+      if (window.POSE_COUNT > 300) {
+        return;
+      }
+      // spawn another tree at the 3rd bone
+      this.limbs.forEach(bones => {
+        // spawnTreeAtBone(bones[1], 0);
+        spawnTreeAtBone(bones[1], randomPoseId());
+      })
+    }, config.epoch / 3);
   }
 
   stepDownScales(poseTree) {
@@ -239,12 +416,12 @@ export class SmartBone extends THREE.Bone {
   }
 
   /**
-   * @param {PoseTree} tree 
-   * @param {number} boneId 
+   * @param {Tree|undefined} tree 
+   * @param {number|undefined} boneId 
    */
   constructor(tree, boneId) {
     super();
-    this.parentTree /** @type {PoseTree} */ = tree;
+    this.parentTree /** @type {Tree} */ = tree;
     this.boneId = boneId;
     SmartBone.instances.push(this);
 
@@ -332,13 +509,13 @@ export function getMemoizedSkinnedMesh(scale) {
   const boneCount = (config.poseType == 'HAND' ? 5 : 4);
   const startSize = config.startingTrunkSize;
   const totalLength = segmentLength * (boneCount);
-  const heightSegments = 10; // More segments = smoother skinning
+  const heightSegments = 50; // More segments = smoother skinning
 
   const geometry = new THREE.CylinderGeometry(
     startSize * scale * config.branchWidthScale,
     startSize * scale,
     totalLength,
-    10,
+    16,
     heightSegments,
     false
   );
@@ -389,4 +566,25 @@ export function getMemoizedSkinnedMesh(scale) {
   SKINNED_MESH_MEMO[scale] = mesh;
 
   return mesh.clone();
+}
+
+/**
+ * 
+ * @param {Tree} tree 
+ * @param {THREE.Vector3} vector 
+ */
+function alignPoseTreeToVector(tree, localY, localX) {
+  const treeRoot = tree.getRoot()
+  const yAxis = localY.clone().normalize();
+  const xAxis = localX.projectOnPlane(yAxis).normalize();
+  const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+
+  const basisMatrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+  const rotationQuat = new THREE.Quaternion().setFromRotationMatrix(basisMatrix);
+
+  const parentWorldQuat = new THREE.Quaternion();
+  treeRoot.parent.getWorldQuaternion(parentWorldQuat);
+  rotationQuat.premultiply(parentWorldQuat.invert());
+
+  treeRoot.quaternion.copy(rotationQuat);
 }

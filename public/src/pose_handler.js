@@ -42,19 +42,35 @@ export async function detectLandmarksForVideo(inputVideoEl) {
   detectionLoop();
 }
 
-async function getPoseData(path) {
+async function getPoseDataFromJson(path) {
   const response = await fetch(path);
   const data = await response.json();
   return data;
 }
 
+/**
+ * @param {Pose[]} poses
+ * 
+ * @returns {Pose}
+ */
+export function getAveragePose(poses) {
+  const out = getBlankPose();
+
+  poses.forEach(pose => {
+    addPose(out, pose);
+  });
+
+  multiplyScalar(out, poses.length);
+  return out;
+}
+
 async function emitDefaultData() {
-  if (config.poseType != 'BODY') {
+  if (config.poseType != 'BODY' || config.disableDefaultData) {
     return;
   }
-  const p1 = getBlankPose(await getPoseData('/data/pose1.json'));
-  const p2 = getBlankPose(await getPoseData('/data/pose2.json'));
-  const p3 = getBlankPose(await getPoseData('/data/pose3.json'));
+  const p1 = getBlankPose(await getPoseDataFromJson('/data/pose1.json'));
+  const p2 = getBlankPose(await getPoseDataFromJson('/data/pose2.json'));
+  const p3 = getBlankPose(await getPoseDataFromJson('/data/pose3.json'));
 
   poseBuffers = [[p1], [p2], [p3]];
   addPose(getSumPose(0), p1);
@@ -266,6 +282,19 @@ function subtractPose(poseA, poseB) {
   }
 }
 
+function multiplyScalar(pose, value) {
+  pose.alignmentVector.multiplyScalar(value);
+  pose.center.multiplyScalar(value);
+
+  for (let i = 0; i < POSE_SIZE; i++) {
+    const landmark = pose.landmarks[i];
+    const worldLandmark = pose.worldLandmarks[i];
+
+    landmark.multiplyScalar(value);
+    worldLandmark.multiplyScalar(value);
+  }
+}
+
 /**
  * @param {{x:number; y:number; z:number;} | undefined}  point 
  * @returns {Vector3}
@@ -299,7 +328,7 @@ function formatWorldLandmarks(worldLandmarks) {
   // hand and body face the 'right' way
   const formatWorldLandmark = vec => {
     if (config.poseType === 'BODY') {
-      vec.multiply(new THREE.Vector3(-1, 1, -1));
+      vec.multiply(new Vector3(-1, 1, -1));
     } else {
       vec.multiplyScalar(-1);
     }
@@ -345,7 +374,7 @@ function formatLandmarks(landmarks) {
   let maxY = -Infinity;
 
   for (let i = 0; i < landmarks.length; i++) {
-    const landmark = createVector3FromObject(landmarks[i]);
+    const landmark = createVector2FromObject(landmarks[i]);
     vectors.push(landmark);
     centerPoint.add(landmark);
 
