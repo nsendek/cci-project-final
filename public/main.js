@@ -7,8 +7,6 @@ import Stats from 'three/addons/libs/stats.module.js';
 
 let camera, renderer, controls, poseTree, worldTreeRoot, gui, folder, stats;
 
-let lastTime = Date.now();
-let currentTime = Date.now();
 
 const sceneLights = [];
 const sceneWalls = [];
@@ -30,9 +28,6 @@ function main() {
 }
 
 function init() {
-  camera = new THREE.PerspectiveCamera(110, window.innerWidth / window.innerHeight, 1, 10000);
-  camera.position.z = ROOM_SIZE / 2;
-  camera.updateProjectionMatrix();
   scene = new THREE.Scene();
   renderer = new THREE.WebGLRenderer();
 
@@ -44,6 +39,7 @@ function init() {
 
   window.addEventListener('resize', onWindowResize);
 
+  setupCamera();
   setupEnviroment();
   setupLights();
   setupTree();
@@ -52,7 +48,6 @@ function init() {
 }
 
 function render() {
-  currentTime = Date.now();
 
   if (controls) {
     controls.update();
@@ -69,12 +64,27 @@ function render() {
   });
 
   renderer.render(scene, camera);
-  lastTime = currentTime;
 
   if (stats) stats.update();
 
   // Do a little recursing.
   requestAnimationFrame(render);
+}
+
+function setupCamera() {
+  camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 1, 10000);
+
+  if (config.debugMode && !config.disableOrbitControls) {
+    camera.position.z = ROOM_SIZE / 2;
+    camera.updateProjectionMatrix();
+  } else {
+    const position = new THREE.Vector3().fromArray(config.cameraOrientation.position);
+    const direction = new THREE.Vector3().fromArray(config.cameraOrientation.direction);
+
+    camera.position.copy(position);
+    camera.lookAt(position.clone().add(direction));
+    camera.updateProjectionMatrix();
+  }
 }
 
 function setupProd() {
@@ -84,7 +94,9 @@ function setupProd() {
 }
 
 function setupDebug() {
-  controls = new OrbitControls(camera, renderer.domElement);
+  if (!config.disableOrbitControls) {
+    controls = new OrbitControls(camera, renderer.domElement);
+  }
 
   if (!config.debugMode) {
     return
@@ -99,21 +111,23 @@ function setupDebug() {
   stats = new Stats();
   document.querySelector("#stats").append(stats.dom);
 
-  controls.addEventListener('end', (e) => {
-    const formatVector = v => {
-      v.x = parseFloat(v.x.toFixed(2));
-      v.y = parseFloat(v.y.toFixed(2));
-      v.z = parseFloat(v.z.toFixed(2));
-      return v;
-    }
-    const cameraPos = formatVector(camera.position.clone());
-    const cameraDir = formatVector(
-      new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
-    );
-    const posText = `Pos:(${cameraPos.x}, ${cameraPos.y}, ${cameraPos.z}) `;
-    const dirText = `Dir:(${cameraDir.x}, ${cameraDir.y}, ${cameraDir.z})`;
-    console.log('Camera - ', posText + dirText)
-  });
+  if (controls) {
+    controls.addEventListener('end', (e) => {
+      const formatVector = v => {
+        v.x = parseFloat(v.x.toFixed(2));
+        v.y = parseFloat(v.y.toFixed(2));
+        v.z = parseFloat(v.z.toFixed(2));
+        return v;
+      }
+      const cameraPos = formatVector(camera.position.clone());
+      const cameraDir = formatVector(
+        new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
+      );
+      const posText = `Pos:(${cameraPos.x}, ${cameraPos.y}, ${cameraPos.z}) `;
+      const dirText = `Dir:(${cameraDir.x}, ${cameraDir.y}, ${cameraDir.z})`;
+      console.log('Camera - ', posText + dirText)
+    });
+  }
 
   new p5(debugSketch); // debugSketch
 
