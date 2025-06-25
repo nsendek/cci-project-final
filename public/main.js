@@ -166,11 +166,14 @@ function setupLights() {
 }
 
 function setupEnviroment() {
-  const room = new THREE.Group();
   scene.background = new THREE.Color(0x000000);
 
+  if (config.hideFloor) {
+    return;
+  }
+  const room = new THREE.Group();
   const nCells = 50;
-	var geometry = new THREE.PlaneGeometry(5*ROOM_SIZE, 5*ROOM_SIZE);
+  var geometry = new THREE.PlaneGeometry(5 * ROOM_SIZE, 5 * ROOM_SIZE);
   const material = new THREE.ShaderMaterial({
     side: THREE.DoubleSide,
     vertexShader: `
@@ -193,12 +196,10 @@ function setupEnviroment() {
   });
 
   const floor = new THREE.Mesh(geometry, material);
-  floor.position.y = -ROOM_SIZE / 10;
   floor.rotation.x = Math.PI / 2;
   sceneWalls.push(floor);
   room.add(floor);
-
-  if (!config.hideFloor) scene.add(room);
+  scene.add(room);
 }
 
 function setupTree() {
@@ -245,23 +246,6 @@ function recurseFill(parentTree, level = 1, maxLevel = level) {
   //     recurseFill(pt, level - 1, maxLevel);
   //   });
 
-}
-
-function createAngleBone() {
-  const bone = createBone();
-  bone.position.x = 50;
-  const childBone = createBone();
-  childBone.position.y = 10;
-  bone.add(childBone);
-  return bone;
-}
-
-function createBone() {
-  const bone = new THREE.Bone();
-  const axis = new THREE.AxesHelper(10);
-  axis.setColors(0xff0000, 0x00ff00, 0x0000ff); // RGB
-  bone.add(axis);
-  return bone;
 }
 
 function onWindowResize() {
