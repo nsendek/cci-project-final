@@ -7,9 +7,12 @@ let averagePoses = [];
 let aspectRatio = 16 / 9;
 let paused = false;
 
+let globalP;
+
 export const debugSketch = (p) => {
   let relevantIndices = [];
   let videoHeight = 360;
+  globalP = p;
 
   p.setup = () => {
     const canvas = p.createCanvas(videoHeight * aspectRatio, videoHeight);
@@ -107,6 +110,7 @@ export const prodSketch = (p) => {
   const MIRROR_BODY = true;
   let thirdWidth;
   let halfThirWidth;
+  globalP = p;
 
   p.setup = () => {
     p.createCanvas(p.windowWidth, p.windowWidth / aspectRatio);
@@ -244,4 +248,9 @@ function setFillOrStroke(p, poseId, isStroke) {
       break;
     default:
   }
+}
+
+// Just in case
+window.reconnectCamera = () => {
+  useWebcam(globalP);
 }
