@@ -1,7 +1,7 @@
 import { detectLandmarksForVideo } from './pose_handler.js';
 import { EventBus, getPoseLimbs } from './util.js';
 
-export const sketch = (p) => {
+export const debugSketch = (p) => {
   let video;
   let poses = [];
   let averagePoses = [];
@@ -59,6 +59,7 @@ export const sketch = (p) => {
 
     EventBus.getInstance().on('exactPoses', (response) => {
       poses = response;
+      // console.log(poses)
     });
   }
 
@@ -67,6 +68,7 @@ export const sketch = (p) => {
     p.image(video, 0, 0, p.width, p.height);
 
     averagePoses.forEach((pose, k) => {
+      if (k >= config.maxPoses) return;
       if (!pose) return;
       p.push();
       if (config.drawCenterPointInDebug) {
@@ -83,6 +85,7 @@ export const sketch = (p) => {
     });
 
     poses.forEach((pose, k) => {
+      if (k >= config.maxPoses) return;
       if (!pose || !pose.landmarks) {
         return;
       }

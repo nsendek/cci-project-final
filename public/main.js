@@ -1,4 +1,4 @@
-import { sketch as debugSketch } from "./src/debug.js"
+import { debugSketch } from "./src/p5.js"
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PoseTree, SmartBone, randomPoseId } from './src/tree.js'
