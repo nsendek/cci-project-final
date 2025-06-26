@@ -30,6 +30,8 @@ let runTimestamp = Date.now();
 let batchCount = 1;
 let batchPoseData = []
 
+console.log('Starting record session: ', runTimestamp);
+
 io.sockets.on('connection', (socket) => {
     console.log("new connection: " + socket.id);
     const dir = path.join(__dirname, `records/${runTimestamp}`);
@@ -41,12 +43,15 @@ io.sockets.on('connection', (socket) => {
 
     socket.on('recordPoseData', (data) => {
         batchPoseData.push(data);
-        console.log('recieiving data');
+
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
 
         // Roughly every 60 seconds.
         if (batchPoseData.length === 60) {
-            console.log('SAVING BATCH DATA');
             const filename = `batch${batchCount}.json`;
+            console.log('SAVING BATCH DATA', filename);
             const filepath = path.join(dir, filename);
 
             // Write JSON data to file

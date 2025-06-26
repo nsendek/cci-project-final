@@ -68,21 +68,11 @@ async function emitDefaultData() {
     if (config.poseType != 'BODY' || config.disableDefaultData) {
         return;
     }
-    const p1 = getBlankPose(await getPoseDataFromJson('/data/pose1.json'));
-    const p2 = getBlankPose(await getPoseDataFromJson('/data/pose2.json'));
-    const p3 = getBlankPose(await getPoseDataFromJson('/data/pose3.json'));
-
-    poseBuffers = [
-        [p1],
-        [p2],
-        [p3]
-    ];
-    addPose(getSumPose(0), p1);
-    addPose(getSumPose(1), p2);
-    addPose(getSumPose(2), p3);
-
-    // EventBus.getInstance().emit('poses', getAveragePoses());
-    EventBus.getInstance().emit('defaultPoses', getAveragePoses());
+    EventBus.getInstance().emit('defaultPoses', [
+        getBlankPose(await getPoseDataFromJson('/data/pose1.json')),
+        getBlankPose(await getPoseDataFromJson('/data/pose2.json')),
+        getBlankPose(await getPoseDataFromJson('/data/pose3.json'))
+    ]);
 }
 
 function detectionLoop() {
@@ -449,11 +439,9 @@ function getBlankPose(data) {
         landmarks,
         worldLandmarks,
         alignmentVector: data ?
-            createVector3FromObject(data.alignmentVector) :
-            new Vector3(0, 0, 0),
+            createVector3FromObject(data.alignmentVector) : new Vector3(0, 0, 0),
         center: data ?
-            createVector2FromObject(data.center) :
-            new Vector2(0, 0)
+            createVector2FromObject(data.center) : new Vector2(0, 0)
     };
 }
 

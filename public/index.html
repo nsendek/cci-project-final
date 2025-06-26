@@ -15,8 +15,7 @@
 
     <script>
         let config = {
-            alignAllPosesUp: true,
-            constantPoseSegmentSizes: false,
+            // alignAllPosesUp: true,
             // debugMode: true,
             // disableOrbitControls: true,
             distinctPoseThreshold: 0.1,
@@ -32,18 +31,18 @@
             poseType: 'BODY',
             maxPoses: 3,
             maxLimbCount: 450,
-            disableRecordPoseData: true,
-            updateTimeDelta: 30,
-            saveTimeDelta: 1000, // 10 sec
+            // disableRecordPoseData: true,
+            updateTimeDelta: 25,
+            saveTimeDelta: 2000, // 2 sec
             // noDetection: true,
-            epoch: 10000, // 10sec
             p5DotSize: 25,
+            // epoch: 10000, // 10sec
             // epoch: 50000, // 50sec
             // epoch: 100000, // 100sec
             // epoch: 3.6e+5, // 1hr
             // epoch: 1.8e+5, // 30min
             // epoch: 7.2e+6, // 2hrs
-            // epoch: 1.26e+7, // 3.5hrs
+            epoch: 1.26e+7, // 3.5hrs
             // epoch: 1.44e+7, // 4 hrs
             cameraOrientation: {
                 position: [11.09, 141.92, 922.32],
@@ -61,12 +60,12 @@
         };
 
         const bodyConfig = {
-            branchLengthScale: 0.35,
-            branchWidthScale: 0.30,
+            branchLengthScale: 0.40,
+            branchWidthScale: 0.40,
             lerpFactor: 0.5,
             // branchLengthScale: 0.30,
             // branchWidthScale: 0.40,
-            poseBufferSize: 3,
+            poseBufferSize: 5,
             startingTrunkSize: 50,
             // disableDefaultData: true,
             // videoUrl: "/videos/dan_3D_test.mov",

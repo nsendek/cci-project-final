@@ -107,8 +107,8 @@ export class WorldTree extends Tree {
         const leftSideTree = this.trees[0]; // Angle it towards left.
         const rightSideTree = this.trees[2]; // Angle it towards right.
 
-        alignPoseTreeToVector(leftSideTree, new THREE.Vector3(-1, 3, 1), new THREE.Vector3(0, 0, 1))
-        alignPoseTreeToVector(rightSideTree, new THREE.Vector3(1, 3, 1), new THREE.Vector3(0, 0, -1))
+        alignPoseTreeToVector(leftSideTree, new THREE.Vector3(-1, 3, 0.5), new THREE.Vector3(0, 0, 1))
+        alignPoseTreeToVector(rightSideTree, new THREE.Vector3(1, 3, 0.5), new THREE.Vector3(0, 0, -1))
     }
 
     update() {
@@ -331,7 +331,7 @@ export class PoseTree extends Tree {
             }
             // spawn another tree at the 3rd bone
             this.limbs.forEach(bones => {
-                spawnTreeAtBone(randomBoneIgnoringRoot(bones), randomPoseId());
+                spawnTreeAtBone(boneWithMostActivity(bones), randomPoseId());
             })
         }, config.epoch / 3);
     }
@@ -465,7 +465,8 @@ export class SmartBone extends THREE.Bone {
 
     nearestSmartBoneParent = null;
     boneId = 0;
-
+    rotActivity = 0;
+    posActivity = 0;
     static getInstances() {
         return SmartBone.instances;
     }
@@ -495,10 +496,12 @@ export class SmartBone extends THREE.Bone {
     }
 
     setTargetPosition(position) {
+        this.posActivity += position.clone().length() / 150;
         this.targetPosition = position;
     }
 
     setTargetQuaternion(quaternion) {
+        this.rotActivity += 2 * Math.acos(quaternion.w);
         this.targetQuaternion = quaternion;
     }
 
@@ -520,6 +523,29 @@ window.SmartBone = SmartBone;
 
 function randomBoneIgnoringRoot(arr) {
     return arr[Math.floor(Math.random() * arr.length - 1) + 1];
+}
+
+function boneWithMostActivity(arr) {
+    if (!window.noise) {
+        return randomBoneIgnoringRoot(arr);
+    }
+    let max = -Infinity;
+    let bestBone;
+    const lastIndex = config.poseType === "HAND" ? 4 : 3;
+    arr.forEach((bone, i) => {
+        if (i == 0) {
+            return;
+        }
+        const val = window.noise(bone.rotActivity, bone.posActivity);
+        if (val > max) {
+            bestBone = bone;
+            max = val;
+        }
+        if (i == lastIndex && Math.random() < 0.15) {
+            bestBone = bone;
+        }
+    })
+    return bestBone;
 }
 
 /**

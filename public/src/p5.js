@@ -15,6 +15,7 @@ export const debugSketch = (p) => {
     globalP = p;
 
     p.setup = () => {
+        window.noise = p.noise;
         const canvas = p.createCanvas(videoHeight * aspectRatio, videoHeight);
         canvas.elt.addEventListener('click', () => {
             console.log(poses);
@@ -114,6 +115,7 @@ export const prodSketch = (p) => {
     globalP = p;
 
     p.setup = () => {
+        window.noise = p.noise;
         p.createCanvas(p.windowWidth, p.windowWidth / aspectRatio);
         thirdWidth = p.width / 3;
         halfThirWidth = thirdWidth / 2;
@@ -170,6 +172,7 @@ export const prodSketch = (p) => {
 
                         p.push();
                         setFillOrStroke(p, k, true);
+                        p.strokeWeight(2);
                         p.line(xA * p.width, yA * p.height, xB * p.width, yB * p.height);
                         p.pop();
                     }
